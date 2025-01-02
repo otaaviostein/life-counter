@@ -1,9 +1,14 @@
-import { Image, StyleSheet, Platform } from "react-native";
-import { HelloWave } from "@/components/HelloWave";
-import ParallaxScrollView from "@/components/ParallaxScrollView";
+import React, { useState } from "react";
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  SafeAreaView,
+} from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { useState } from "react";
+import { Picker } from "@react-native-picker/picker";
 
 export default function HomeScreen() {
   const [players, setPlayers] = useState(1);
@@ -22,169 +27,153 @@ export default function HomeScreen() {
     setCounters(newCounters);
   };
 
-  const playerStyle = (numPlayers: number, index: number) => {
-    if (numPlayers === 3) {
-      if (index === 2) {
-        return { gridColumn: "1 / span 2", gridRow: "2" }; // Span both columns on the second row
-      }
-      return { gridColumn: index + 1, gridRow: 1 };
-    }
-    if (numPlayers === 5) {
-      if (index === 4) {
-        return { gridColumn: "3", gridRow: "1 / span 2" }; // Span two rows on the right
-      }
-      return {
-        gridColumn: (index % 2) + 1,
-        gridRow: Math.floor(index / 2) + 1,
-      };
-    }
-    return {};
-  };
-
-  const gridContainerStyle = (numPlayers: number) => {
-    if (numPlayers === 1) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr",
-        gridTemplateRows: "1fr",
-      };
-    }
-    if (numPlayers === 2) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gridTemplateRows: "1fr",
-      };
-    }
-    if (numPlayers === 3) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gridTemplateRows: "1fr 1fr",
-        gap: "10px",
-      };
-    }
-    if (numPlayers === 4) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gridTemplateRows: "1fr 1fr",
-      };
-    }
-    if (numPlayers === 5) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
-        gridTemplateRows: "1fr 1fr",
-        gap: "10px",
-      };
-    }
-    if (numPlayers === 6) {
-      return {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr 1fr",
-        gridTemplateRows: "1fr 1fr",
-      };
-    }
-    return {};
+  const renderPlayers = () => {
+    return Array.from({ length: players }).map((_, index) => (
+      <View
+        key={index}
+        style={[
+          styles.playerContainer,
+          players === 3 && index === 2 ? styles.player3Container : null,
+          players === 5 && index === 4 ? styles.player5Container : null,
+        ]}
+      >
+        <Text
+          style={[
+            styles.playerText,
+            players === 5 && index === 4 ? styles.rotatedText : null,
+          ]}
+        >
+          Player {index + 1}
+        </Text>
+        <View style={styles.counterContainer}>
+          <ThemedText>Counter: {counters[index]}</ThemedText>
+        </View>
+        <TouchableOpacity
+          onPress={() => incrementCounter(index)}
+          style={styles.button}
+        >
+          <Text>Increment</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => decrementCounter(index)}
+          style={styles.button}
+        >
+          <Text>Decrement</Text>
+        </TouchableOpacity>
+      </View>
+    ));
   };
 
   return (
-    <ThemedView style={{ flex: 1 }}>
-      {!gameStarted ? (
-        <ThemedView
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            paddingTop: 40,
-            paddingHorizontal: 20,
-          }}
-        >
-          <ThemedText
-            style={{
-              fontSize: 36,
-              fontWeight: "bold",
-              marginBottom: 10,
-              color: "white",
-            }}
-          >
-            Life Counter
-          </ThemedText>
-          <ThemedText style={{ marginTop: 10, color: "white" }}>
-            Select the number of players:
-          </ThemedText>
-          <select
-            name="players"
-            id="players"
-            style={{ width: "100%", marginTop: 10, height: 30 }}
-            onChange={(e) => setPlayers(parseInt(e.target.value))}
-          >
-            {[...Array(6).keys()].map((n) => (
-              <option key={n + 1} value={n + 1}>
-                {n + 1}
-              </option>
-            ))}
-          </select>
-          <button
-            style={{
-              marginTop: 20,
-              backgroundColor: "white",
-              color: "black",
-              outline: "none",
-              padding: 10,
-              border: "none",
-              width: "100%",
-            }}
-            onClick={() => setGameStarted(true)}
-          >
-            Start
-          </button>
-        </ThemedView>
-      ) : (
-        <ThemedView
-          style={{
-            ...gridContainerStyle(players),
-            gap: "10px",
-            backgroundColor: "black",
-            height: "100%",
-          }}
-        >
-          {Array.from({ length: players }).map((_, index) => (
-            <div
-              key={index}
-              style={{
-                ...playerStyle(players, index),
-                backgroundColor: "white",
-                border: "1px solid black",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+    <SafeAreaView style={{ flex: 1 }}>
+      <ThemedView style={styles.container}>
+        {!gameStarted ? (
+          <ThemedView style={styles.startContainer}>
+            <ThemedText style={styles.title}>Life Counter</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Select the number of players:
+            </ThemedText>
+            <Picker
+              selectedValue={players}
+              style={styles.picker}
+              onValueChange={(itemValue) => setPlayers(itemValue)}
             >
-              <div style={{ fontSize: 20, fontWeight: "bold" }}>
-                Player {index + 1}
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <ThemedText>Counter: {counters[index]}</ThemedText>
-              </div>
-              <button
-                onClick={() => incrementCounter(index)}
-                style={{ marginTop: 10 }}
-              >
-                Increment
-              </button>
-              <button
-                onClick={() => decrementCounter(index)}
-                style={{ marginTop: 10 }}
-              >
-                Decrement
-              </button>
-            </div>
-          ))}
-        </ThemedView>
-      )}
-    </ThemedView>
+              {[...Array(6).keys()].map((n) => (
+                <Picker.Item key={n + 1} label={`${n + 1}`} value={n + 1} />
+              ))}
+            </Picker>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => setGameStarted(true)}
+            >
+              <Text style={styles.startButtonText}>Start</Text>
+            </TouchableOpacity>
+          </ThemedView>
+        ) : (
+          <ThemedView style={styles.gridContainer}>
+            {renderPlayers()}
+          </ThemedView>
+        )}
+      </ThemedView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "black",
+  },
+  startContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 40,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "white",
+  },
+  subtitle: {
+    marginTop: 10,
+    color: "white",
+  },
+  picker: {
+    width: "100%",
+    marginTop: 10,
+    height: 30,
+    color: "white",
+  },
+  startButton: {
+    marginTop: 20,
+    backgroundColor: "white",
+    padding: 10,
+    alignItems: "center",
+    width: "100%",
+  },
+  startButtonText: {
+    color: "black",
+  },
+  gridContainer: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  playerContainer: {
+    backgroundColor: "white",
+    borderColor: "black",
+    borderWidth: 1,
+    margin: 5,
+    flexBasis: "45%",
+    alignItems: "center",
+    padding: 10,
+  },
+  player3Container: {
+    flexBasis: "90%", // Make Player 3 span full width
+  },
+  player5Container: {
+    flexBasis: "90%", // Make Player 5 span two rows
+  },
+  playerText: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  rotatedText: {
+    transform: [{ rotate: "90deg" }],
+  },
+  counterContainer: {
+    marginTop: 10,
+  },
+  button: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: "lightgray",
+    alignItems: "center",
+    width: "100%",
+  },
+});
