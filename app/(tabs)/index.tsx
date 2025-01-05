@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -6,100 +6,135 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from "react-native";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { Picker } from "@react-native-picker/picker";
+import { useGameContext } from "../context/GameContext";
 
 export default function HomeScreen() {
+  const { gameStarted, setGameStarted } = useGameContext();
+
   const [players, setPlayers] = useState(1);
-  const [gameStarted, setGameStarted] = useState(false);
+  //const [gameStarted, setGameStarted] = useState(false);
   const [counters, setCounters] = useState(Array(6).fill(40)); // Support up to 6 players
 
-  const incrementCounter = (index: number) => {
-    const newCounters = [...counters];
-    newCounters[index] += 1;
-    setCounters(newCounters);
+  const updateCounter = (index: number, delta: number) => {
+    setCounters((prev) => {
+      const newCounters = [...prev];
+      newCounters[index] += delta;
+      return newCounters;
+    });
   };
 
-  const decrementCounter = (index: number) => {
-    const newCounters = [...counters];
-    newCounters[index] -= 1;
-    setCounters(newCounters);
-  };
-
-  const renderPlayers = () => {
-    return Array.from({ length: players }).map((_, index) => (
+  const renderPlayers = () =>
+    Array.from({ length: players }).map((_, index) => (
       <View
         key={index}
         style={[
           styles.playerContainer,
-          players === 3 && index === 2 ? styles.player3Container : null,
-          players === 5 && index === 4 ? styles.player5Container : null,
+          players === 3 && index === 2 && styles.player3Container,
+          players === 5 && index === 4 && styles.player5Container,
         ]}
       >
-        <Text
-          style={[
-            styles.playerText,
-            players === 5 && index === 4 ? styles.rotatedText : null,
-          ]}
+        <View
+          style={{
+            transform: [
+              {
+                rotate:
+                  index === 0 && players !== 1
+                    ? "90deg"
+                    : index === 0 && players === 1
+                    ? "0deg"
+                    : index === 1
+                    ? "-90deg"
+                    : index === 2 && players !== 3
+                    ? "90deg"
+                    : index === 2 && players === 3
+                    ? "0deg"
+                    : index === 3
+                    ? "-90deg"
+                    : index === 4 && players !== 5
+                    ? "90deg"
+                    : index === 4 && players === 5
+                    ? "0deg"
+                    : index === 5
+                    ? "-90deg"
+                    : "0deg",
+              },
+            ],
+          }}
         >
-          Player {index + 1}
-        </Text>
-        <View style={styles.counterContainer}>
-          <ThemedText>Counter: {counters[index]}</ThemedText>
+          <Text style={styles.playerText}>Player {index + 1}</Text>
+          <View style={styles.counterContainer}>
+            <Text>Counter: {counters[index]}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => updateCounter(index, 1)}
+            style={styles.button}
+          >
+            <Text>Increment</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => updateCounter(index, -1)}
+            style={styles.button}
+          >
+            <Text>Decrement</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={() => incrementCounter(index)}
-          style={styles.button}
-        >
-          <Text>Increment</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => decrementCounter(index)}
-          style={styles.button}
-        >
-          <Text>Decrement</Text>
-        </TouchableOpacity>
       </View>
     ));
-  };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
         {!gameStarted ? (
-          <ThemedView style={styles.startContainer}>
-            <ThemedText style={styles.title}>Life Counter</ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Select the number of players:
-            </ThemedText>
+          <View style={styles.startContainer}>
+            <Text style={styles.title}>Life Counter</Text>
+            <Text style={styles.subtitle}>Select the number of players:</Text>
             <Picker
-              selectedValue={players}
+              selectedValue={players.toString()} // Convert selectedValue to string
               style={styles.picker}
-              onValueChange={(itemValue) => setPlayers(itemValue)}
+              onValueChange={(value) => setPlayers(parseInt(value, 10))} // Parse string back to number
             >
               {[...Array(6).keys()].map((n) => (
-                <Picker.Item key={n + 1} label={`${n + 1}`} value={n + 1} />
+                <Picker.Item
+                  key={n + 1}
+                  label={`${n + 1}`}
+                  value={(n + 1).toString()} // Ensure all Picker.Item values are strings
+                  color="white"
+                />
               ))}
             </Picker>
+
             <TouchableOpacity
               style={styles.startButton}
               onPress={() => setGameStarted(true)}
             >
               <Text style={styles.startButtonText}>Start</Text>
             </TouchableOpacity>
-          </ThemedView>
+          </View>
         ) : (
-          <ThemedView style={styles.gridContainer}>
-            {renderPlayers()}
-          </ThemedView>
+          <>
+            <View style={styles.gridContainer}>{renderPlayers()}</View>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => {
+                setPlayers(1);
+                setCounters(Array(6).fill(40));
+                setGameStarted(false);
+              }}
+            >
+              <Text>Home</Text>
+            </TouchableOpacity>
+          </>
         )}
-      </ThemedView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: "black",
@@ -143,28 +178,30 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 20,
+    backgroundColor: "green",
   },
   playerContainer: {
-    backgroundColor: "white",
+    backgroundColor: "red",
     borderColor: "black",
     borderWidth: 1,
     margin: 5,
     flexBasis: "45%",
+    height: "35%",
     alignItems: "center",
     padding: 10,
   },
   player3Container: {
-    flexBasis: "90%", // Make Player 3 span full width
+    flexBasis: "92%", // Make Player 3 span full width
+    height: "40%",
   },
   player5Container: {
     flexBasis: "90%", // Make Player 5 span two rows
+    height: "20%",
   },
   playerText: {
     fontSize: 20,
     fontWeight: "bold",
-  },
-  rotatedText: {
-    transform: [{ rotate: "90deg" }],
   },
   counterContainer: {
     marginTop: 10,
