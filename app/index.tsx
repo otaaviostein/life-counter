@@ -7,9 +7,9 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import { useGameContext } from "../context/GameContext";
+import { useGameContext } from "./context/GameContext";
 
-export default function HomeScreen() {
+export default function Index() {
   const { gameStarted, setGameStarted } = useGameContext();
 
   const [players, setPlayers] = useState(1);
