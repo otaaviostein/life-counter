@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
@@ -7,14 +7,14 @@ import {
   SafeAreaView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+
 import { useGameContext } from "./context/GameContext";
 
 export default function Index() {
   const { gameStarted, setGameStarted } = useGameContext();
 
   const [players, setPlayers] = useState(1);
-  //const [gameStarted, setGameStarted] = useState(false);
-  const [counters, setCounters] = useState(Array(6).fill(40)); // Support up to 6 players
+  const [counters, setCounters] = useState(Array(6).fill(40));
 
   const updateCounter = (index: number, delta: number) => {
     setCounters((prev) => {
@@ -24,44 +24,32 @@ export default function Index() {
     });
   };
 
+  const getPlayerRotation = (index: number) => {
+    const rotationMap = {
+      0: players === 2 ? "180deg" : players === 1 ? "0deg" : "90deg",
+      1: players === 2 ? "0deg" : "-90deg",
+      2: players === 3 ? "0deg" : "90deg",
+      3: "-90deg",
+      4: players === 5 ? "0deg" : "90deg",
+      5: "-90deg",
+    };
+    return rotationMap[index] || "0deg";
+  };
+
   const renderPlayers = () =>
     Array.from({ length: players }).map((_, index) => (
       <View
         key={index}
         style={[
-          styles.playerContainer,
-          players === 3 && index === 2 && styles.player3Container,
-          players === 5 && index === 4 && styles.player5Container,
+          styles.basePlayerContainer,
+          styles[`playerContainer${players}`],
+          index === 0 && styles[`firstPlayerContainer${players}`],
+          index === 1 && styles[`secondPlayerContainer${players}`],
+          index === 2 && styles[`thirdPlayerContainer${players}`],
+          index === 4 && styles[`fourthPlayerContainer${players}`],
         ]}
       >
-        <View
-          style={{
-            transform: [
-              {
-                rotate:
-                  index === 0 && players !== 1
-                    ? "90deg"
-                    : index === 0 && players === 1
-                    ? "0deg"
-                    : index === 1
-                    ? "-90deg"
-                    : index === 2 && players !== 3
-                    ? "90deg"
-                    : index === 2 && players === 3
-                    ? "0deg"
-                    : index === 3
-                    ? "-90deg"
-                    : index === 4 && players !== 5
-                    ? "90deg"
-                    : index === 4 && players === 5
-                    ? "0deg"
-                    : index === 5
-                    ? "-90deg"
-                    : "0deg",
-              },
-            ],
-          }}
-        >
+        <View style={{ transform: [{ rotate: getPlayerRotation(index) }] }}>
           <Text style={styles.playerText}>Player {index + 1}</Text>
           <View style={styles.counterContainer}>
             <Text>Counter: {counters[index]}</Text>
@@ -90,15 +78,15 @@ export default function Index() {
             <Text style={styles.title}>Life Counter</Text>
             <Text style={styles.subtitle}>Select the number of players:</Text>
             <Picker
-              selectedValue={players.toString()} // Convert selectedValue to string
+              selectedValue={players.toString()}
               style={styles.picker}
-              onValueChange={(value) => setPlayers(parseInt(value, 10))} // Parse string back to number
+              onValueChange={(value) => setPlayers(parseInt(value, 10))}
             >
               {[...Array(6).keys()].map((n) => (
                 <Picker.Item
                   key={n + 1}
                   label={`${n + 1}`}
-                  value={(n + 1).toString()} // Ensure all Picker.Item values are strings
+                  value={(n + 1).toString()}
                   color="white"
                 />
               ))}
@@ -113,7 +101,14 @@ export default function Index() {
           </View>
         ) : (
           <>
-            <View style={styles.gridContainer}>{renderPlayers()}</View>
+            <View
+              style={[
+                players !== 2 && styles.gridContainer,
+                players === 2 && styles.twoPlayerGridContainer,
+              ]}
+            >
+              {renderPlayers()}
+            </View>
             <TouchableOpacity
               style={styles.startButton}
               onPress={() => {
@@ -158,19 +153,19 @@ const styles = StyleSheet.create({
   },
   picker: {
     width: "100%",
-    marginTop: 10,
-    height: 30,
     color: "white",
   },
   startButton: {
-    marginTop: 20,
+    marginTop: 15,
     backgroundColor: "white",
-    padding: 10,
+    padding: 15,
     alignItems: "center",
     width: "100%",
+    borderRadius: 5,
   },
   startButtonText: {
     color: "black",
+    fontSize: 14,
   },
   gridContainer: {
     flex: 1,
@@ -181,23 +176,60 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: "green",
   },
-  playerContainer: {
+  twoPlayerGridContainer: {
+    flex: 1,
+    flexDirection: "column",
+    marginTop: 20,
+    backgroundColor: "green",
+  },
+  basePlayerContainer: {
     backgroundColor: "red",
     borderColor: "black",
     borderWidth: 1,
     margin: 5,
     flexBasis: "45%",
-    height: "35%",
     alignItems: "center",
     padding: 10,
   },
-  player3Container: {
-    flexBasis: "92%", // Make Player 3 span full width
-    height: "40%",
+  playerContainer1: {
+    flexBasis: "92%",
+    flex: 1,
+    justifyContent: "center",
+    height: "100%",
   },
-  player5Container: {
-    flexBasis: "90%", // Make Player 5 span two rows
-    height: "20%",
+  playerContainer2: {
+    height: "50%",
+    justifyContent: "center",
+  },
+  playerContainer3: {
+    height: "50%",
+    justifyContent: "center",
+  },
+  playerContainer4: {
+    height: "48%",
+    justifyContent: "center",
+  },
+  playerContainer5: {
+    height: "35%",
+    justifyContent: "center",
+  },
+  playerContainer6: {
+    height: "31%",
+    justifyContent: "center",
+  },
+  firstPlayerContainer3: {
+    height: "50%",
+  },
+  secondPlayerContainer3: {
+    height: "50%",
+  },
+  thirdPlayerContainer3: {
+    flexBasis: "92%",
+    height: "45%",
+  },
+  fourthPlayerContainer5: {
+    flexBasis: "92%",
+    height: "25%",
   },
   playerText: {
     fontSize: 20,
