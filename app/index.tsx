@@ -127,6 +127,7 @@ export default function Index() {
       >
 {(() => {
           const config = getRotationAwareTouchConfig(index);
+          const rotation = getPlayerRotation(index);
           return (
             <>
               <TouchableOpacity
@@ -134,7 +135,7 @@ export default function Index() {
                 onPress={config.decrementAction}
                 activeOpacity={0.7}
               >
-                <Text style={styles.decrementIndicator}>-</Text>
+                <Text style={[styles.decrementIndicator, { transform: [{ rotate: rotation }] }]}>-</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -142,7 +143,7 @@ export default function Index() {
                 onPress={config.incrementAction}
                 activeOpacity={0.7}
               >
-                <Text style={styles.incrementIndicator}>+</Text>
+                <Text style={[styles.incrementIndicator, { transform: [{ rotate: rotation }] }]}>+</Text>
               </TouchableOpacity>
             </>
           );
