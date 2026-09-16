@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useKeepAwake } from "expo-keep-awake";
 import {
+  Alert,
   Animated,
   Platform,
   StyleSheet,
@@ -19,7 +20,7 @@ const PLAYER_ACCENTS = [
   "#9A8FA3", // black
   "#C05548", // red
   "#5B9668", // green
-  "#C9A227", // gold
+  "#B56A9F", // orchid
 ];
 
 type CrossSlot = "top" | "left" | "right" | "bottom";
@@ -54,6 +55,16 @@ const CROSS_POSITIONS: Record<CrossSlot, [number, number]> = {
 };
 
 const COMMIT_DELAY_MS = 1800;
+
+// Row structure of the grid board per player count; every card flexes evenly.
+const BOARD_ROWS: Record<number, number[][]> = {
+  1: [[0]],
+  2: [[0], [1]],
+  3: [[0, 1], [2]],
+  4: [[0, 1], [2, 3]],
+  5: [[0, 1], [2, 3], [4]],
+  6: [[0, 1], [2, 3], [4, 5]],
+};
 const POD_RING_SIZE = 148;
 const SEAT_DOT_SIZE = 18;
 
@@ -399,6 +410,30 @@ export default function Index() {
           },
         ]}
       >
+        <View
+          pointerEvents="none"
+          style={[
+            styles.seatTint,
+            { backgroundColor: `${PLAYER_ACCENTS[index]}0F` },
+          ]}
+        />
+        {(["cornerTL", "cornerTR", "cornerBL", "cornerBR"] as const).map(
+          (corner) => (
+            <View
+              key={corner}
+              pointerEvents="none"
+              style={[
+                styles.corner,
+                styles[corner],
+                {
+                  borderColor: eliminated
+                    ? "rgba(232, 226, 208, 0.15)"
+                    : `${PLAYER_ACCENTS[index]}66`,
+                },
+              ]}
+            />
+          )
+        )}
         {!inCmd && (
           <>
             <TouchableOpacity
@@ -446,7 +481,18 @@ export default function Index() {
                 Player {index + 1}
               </Text>
               <View style={styles.counterContainer}>
-                <Text style={styles.counterText}>{getAdjustedLifeTotal(index)}</Text>
+                <Text
+                  style={[
+                    styles.counterText,
+                    {
+                      textShadowColor: `${PLAYER_ACCENTS[index]}59`,
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 18,
+                    },
+                  ]}
+                >
+                  {getAdjustedLifeTotal(index)}
+                </Text>
                 {pendingDeltas[index] !== 0 && (
                   <Text
                     style={[
@@ -529,18 +575,15 @@ export default function Index() {
     );
   };
 
-  const renderGrid = () => {
-    const anyStyles = styles as Record<string, any>;
-    return Array.from({ length: players }).map((_, index) =>
-      renderPlayerCard(index, [
-        anyStyles[`playerContainer${players}`],
-        index === 0 && anyStyles[`firstPlayerContainer${players}`],
-        index === 1 && anyStyles[`secondPlayerContainer${players}`],
-        index === 2 && anyStyles[`thirdPlayerContainer${players}`],
-        index === 4 && anyStyles[`fourthPlayerContainer${players}`],
-      ])
-    );
-  };
+  const renderGrid = () => (
+    <View style={styles.board}>
+      {BOARD_ROWS[players].map((row, rowIdx) => (
+        <View key={rowIdx} style={styles.boardRow}>
+          {row.map((idx) => renderPlayerCard(idx, styles.boardCard))}
+        </View>
+      ))}
+    </View>
+  );
 
   const renderCross = () => {
     const slots = CROSS_SLOTS[players];
@@ -701,19 +744,7 @@ export default function Index() {
           </View>
         ) : (
           <>
-            {isCross ? (
-              renderCross()
-            ) : (
-              <View
-                style={
-                  players !== 2
-                    ? styles.gridContainer
-                    : styles.twoPlayerGridContainer
-                }
-              >
-                {renderGrid()}
-              </View>
-            )}
+            {isCross ? renderCross() : renderGrid()}
             <View style={styles.bottomBar}>
               <TouchableOpacity
                 style={[
@@ -729,10 +760,25 @@ export default function Index() {
               <TouchableOpacity
                 style={[styles.homeButton, styles.endButton]}
                 onPress={() => {
-                  setCounters(Array(6).fill(startingLife));
-                  setCommanderDamage(Array(6).fill(null).map(() => Array(6).fill(0)));
-                  resetGameState();
-                  setGameStarted(false);
+                  Alert.alert(
+                    "End game?",
+                    "Life totals and commander damage will be reset.",
+                    [
+                      { text: "Keep playing", style: "cancel" },
+                      {
+                        text: "End game",
+                        style: "destructive",
+                        onPress: () => {
+                          setCounters(Array(6).fill(startingLife));
+                          setCommanderDamage(
+                            Array(6).fill(null).map(() => Array(6).fill(0))
+                          );
+                          resetGameState();
+                          setGameStarted(false);
+                        },
+                      },
+                    ]
+                  );
                 }}
                 activeOpacity={0.7}
               >
@@ -769,7 +815,7 @@ const styles = StyleSheet.create({
   },
   arcaneRing: {
     position: "absolute",
-    borderColor: "#C9A227",
+    borderColor: "#3EA98A",
     borderWidth: 1,
   },
   arcaneRingOuter: {
@@ -795,7 +841,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eyebrow: {
-    color: "#B39847",
+    color: "#63A493",
     fontSize: 11,
     letterSpacing: 6,
     marginBottom: 10,
@@ -831,7 +877,7 @@ const styles = StyleSheet.create({
     height: POD_RING_SIZE,
     borderRadius: POD_RING_SIZE / 2,
     borderWidth: 1,
-    borderColor: "rgba(201, 162, 39, 0.35)",
+    borderColor: "rgba(62, 169, 138, 0.35)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -841,7 +887,7 @@ const styles = StyleSheet.create({
     borderRadius: (POD_RING_SIZE - 58) / 2,
     backgroundColor: "#12150F",
     borderWidth: 1,
-    borderColor: "rgba(201, 162, 39, 0.2)",
+    borderColor: "rgba(62, 169, 138, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -864,7 +910,7 @@ const styles = StyleSheet.create({
     width: SEAT_DOT_SIZE,
     height: SEAT_DOT_SIZE,
     borderRadius: SEAT_DOT_SIZE / 2,
-    backgroundColor: "#C9A227",
+    backgroundColor: "#3EA98A",
     borderWidth: 2,
     borderColor: "#0A0C08",
   },
@@ -891,8 +937,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   seatChipActive: {
-    backgroundColor: "#C9A227",
-    borderColor: "#C9A227",
+    backgroundColor: "#3EA98A",
+    borderColor: "#3EA98A",
   },
   seatChipText: {
     color: "#E8E2D0",
@@ -925,11 +971,11 @@ const styles = StyleSheet.create({
   crossContainer: {
     flex: 1,
     flexDirection: "column",
-    marginTop: 20,
+    padding: 6,
+    gap: 6,
   },
   crossEdgeCard: {
     flex: 1,
-    flexBasis: "auto",
     alignSelf: "stretch",
     justifyContent: "center",
   },
@@ -937,10 +983,10 @@ const styles = StyleSheet.create({
     flex: 1.5,
     flexDirection: "row",
     alignSelf: "stretch",
+    gap: 6,
   },
   crossSideCard: {
     flex: 1,
-    flexBasis: "auto",
     justifyContent: "center",
   },
   beginBlock: {
@@ -951,7 +997,7 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: "#C9A227",
+    backgroundColor: "#3EA98A",
     alignItems: "center",
   },
   beginButtonText: {
@@ -969,16 +1015,17 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     flexDirection: "row",
-    marginVertical: 10,
-    marginHorizontal: 20,
-    gap: 10,
+    marginTop: 2,
+    marginBottom: 6,
+    marginHorizontal: 6,
+    gap: 6,
   },
   homeButton: {
     paddingVertical: 12,
     alignItems: "center",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(201, 162, 39, 0.4)",
+    borderColor: "rgba(62, 169, 138, 0.4)",
   },
   undoButton: {
     flex: 1,
@@ -987,34 +1034,33 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   homeButtonText: {
-    color: "#B39847",
+    color: "#63A493",
     fontSize: 12,
     letterSpacing: 4,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
     fontWeight: "600",
   },
-  gridContainer: {
+  board: {
+    flex: 1,
+    padding: 6,
+    gap: 6,
+  },
+  boardRow: {
     flex: 1,
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
+    gap: 6,
   },
-  twoPlayerGridContainer: {
+  boardCard: {
     flex: 1,
-    flexDirection: "column",
-    marginTop: 20,
+    justifyContent: "center",
   },
   basePlayerContainer: {
     backgroundColor: "#12150F",
     borderColor: "rgba(232, 226, 208, 0.2)",
     borderWidth: 1,
-    borderRadius: 20,
-    margin: 5,
-    flexBasis: "45%",
+    borderRadius: 16,
     alignItems: "center",
-    padding: 10,
+    padding: 8,
     position: "relative",
   },
   leftTouchArea: {
@@ -1024,8 +1070,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "50%",
     justifyContent: "center",
-    alignItems: "flex-start",
-    paddingLeft: 10,
+    alignItems: "center",
     zIndex: 2,
   },
   rightTouchArea: {
@@ -1035,8 +1080,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: "50%",
     justifyContent: "center",
-    alignItems: "flex-end",
-    paddingRight: 10,
+    alignItems: "center",
     zIndex: 2,
   },
   topTouchArea: {
@@ -1045,9 +1089,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: "50%",
-    justifyContent: "flex-start",
+    justifyContent: "center",
     alignItems: "center",
-    paddingTop: 10,
     zIndex: 2,
   },
   bottomTouchArea: {
@@ -1056,60 +1099,52 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: "50%",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 10,
     zIndex: 2,
   },
   decrementIndicator: {
-    fontSize: 40,
-    fontWeight: "300",
-    color: "rgba(232, 226, 208, 0.25)",
+    fontSize: 60,
+    fontWeight: "200",
+    color: "rgba(232, 226, 208, 0.1)",
   },
   incrementIndicator: {
-    fontSize: 40,
-    fontWeight: "300",
-    color: "rgba(232, 226, 208, 0.25)",
+    fontSize: 60,
+    fontWeight: "200",
+    color: "rgba(232, 226, 208, 0.1)",
   },
-  playerContainer1: {
-    flexBasis: "92%",
-    flex: 1,
-    justifyContent: "center",
-    height: "100%",
+  seatTint: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 16,
   },
-  playerContainer2: {
-    height: "50%",
-    justifyContent: "center",
+  corner: {
+    position: "absolute",
+    width: 14,
+    height: 14,
   },
-  playerContainer3: {
-    height: "50%",
-    justifyContent: "center",
+  cornerTL: {
+    top: 8,
+    left: 8,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
   },
-  playerContainer4: {
-    height: "48%",
-    justifyContent: "center",
+  cornerTR: {
+    top: 8,
+    right: 8,
+    borderTopWidth: 1,
+    borderRightWidth: 1,
   },
-  playerContainer5: {
-    height: "35%",
-    justifyContent: "center",
+  cornerBL: {
+    bottom: 8,
+    left: 8,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
   },
-  playerContainer6: {
-    height: "31%",
-    justifyContent: "center",
-  },
-  firstPlayerContainer3: {
-    height: "50%",
-  },
-  secondPlayerContainer3: {
-    height: "50%",
-  },
-  thirdPlayerContainer3: {
-    flexBasis: "92%",
-    height: "45%",
-  },
-  fourthPlayerContainer5: {
-    flexBasis: "92%",
-    height: "25%",
+  cornerBR: {
+    bottom: 8,
+    right: 8,
+    borderBottomWidth: 1,
+    borderRightWidth: 1,
   },
   playerText: {
     fontSize: 12,
@@ -1127,7 +1162,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   counterText: {
-    fontSize: 64,
+    fontSize: 84,
     color: "#E8E2D0",
     fontFamily: Platform.select({ ios: "Copperplate", default: "serif" }),
     fontWeight: "700",
@@ -1149,16 +1184,16 @@ const styles = StyleSheet.create({
     marginVertical: 1,
   },
   commanderButton: {
-    backgroundColor: "rgba(201, 162, 39, 0.08)",
+    backgroundColor: "rgba(62, 169, 138, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(201, 162, 39, 0.45)",
+    borderColor: "rgba(62, 169, 138, 0.45)",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 14,
     alignSelf: "center",
   },
   commanderButtonText: {
-    color: "#C9A227",
+    color: "#3EA98A",
     fontSize: 11,
     letterSpacing: 2,
     fontWeight: "600",
@@ -1214,20 +1249,20 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: "rgba(232, 226, 208, 0.18)",
+    borderColor: "rgba(232, 226, 208, 0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
   tokenButtonActive: {
-    borderColor: "#C9A227",
-    backgroundColor: "rgba(201, 162, 39, 0.18)",
+    borderColor: "#3EA98A",
+    backgroundColor: "rgba(62, 169, 138, 0.18)",
   },
   tokenText: {
     color: "rgba(232, 226, 208, 0.3)",
     fontSize: 15,
   },
   tokenTextActive: {
-    color: "#C9A227",
+    color: "#3EA98A",
   },
   deltaChip: {
     position: "absolute",
