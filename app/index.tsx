@@ -61,7 +61,7 @@ export default function Index() {
   useKeepAwake();
   const { gameStarted, setGameStarted } = useGameContext();
 
-  const [players, setPlayers] = useState(1);
+  const [players, setPlayers] = useState(4);
   const [startingLife, setStartingLife] = useState(40);
   const [layoutMode, setLayoutMode] = useState<"table" | "cross">("table");
   const isCross = layoutMode === "cross" && players <= 4;
@@ -72,7 +72,8 @@ export default function Index() {
 
   useEffect(() => {
     if (gameStarted) return;
-    entrance.forEach((v) => v.setValue(0));
+    // Values are reset to 0 before gameStarted flips (see resetGameState),
+    // so the home screen never paints a fully-visible frame before animating.
     Animated.stagger(
       130,
       entrance.map((v) =>
@@ -182,6 +183,7 @@ export default function Index() {
   };
 
   const resetGameState = () => {
+    entrance.forEach((v) => v.setValue(0));
     stopAllHolds();
     pendingTimers.current.forEach((t) => t && clearTimeout(t));
     pendingTimers.current = Array(6).fill(null);
@@ -727,7 +729,6 @@ export default function Index() {
               <TouchableOpacity
                 style={[styles.homeButton, styles.endButton]}
                 onPress={() => {
-                  setPlayers(1);
                   setCounters(Array(6).fill(startingLife));
                   setCommanderDamage(Array(6).fill(null).map(() => Array(6).fill(0)));
                   resetGameState();
