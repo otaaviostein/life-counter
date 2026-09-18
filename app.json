@@ -1,21 +1,25 @@
 {
   "expo": {
-    "name": "life-counter",
+    "name": "Life Counter",
     "slug": "life-counter",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "lifecounter",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0A0C08",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.life-counter"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.otaviostein.lifecounter",
+      "buildNumber": "1"
     },
     "android": {
+      "package": "com.otaviostein.lifecounter",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0A0C08"
       }
     },
     "web": {
@@ -31,7 +35,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#0A0C08"
         }
       ]
     ],
