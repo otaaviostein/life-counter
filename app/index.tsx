@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useKeepAwake } from "expo-keep-awake";
+import { useFonts, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import {
   Alert,
   Animated,
   Platform,
+  Pressable,
   StyleSheet,
   View,
   Text,
@@ -13,14 +15,14 @@ import {
 
 import { useGameContext } from "./context/GameContext";
 
-const MANA_COLORS = ["#F5F0DC", "#1E6FA9", "#4A4238", "#B23C2E", "#3F7A4C"];
+const MANA_COLORS = ["#F5F0DC", "#1E6FA9", "#4A4238", "#FF6B5A", "#3F7A4C"];
 const PLAYER_ACCENTS = [
-  "#D8CFAF", // white mana
-  "#4E8FBF", // blue
-  "#9A8FA3", // black
-  "#C05548", // red
-  "#5B9668", // green
-  "#B56A9F", // orchid
+  "#E3D9BB", // ivory
+  "#62A9E3", // azure
+  "#A78FD9", // amethyst
+  "#E0655A", // garnet
+  "#66BB88", // moss
+  "#D678B4", // orchid
 ];
 
 type CrossSlot = "top" | "left" | "right" | "bottom";
@@ -70,6 +72,7 @@ const SEAT_DOT_SIZE = 18;
 
 export default function Index() {
   useKeepAwake();
+  const [fontsLoaded] = useFonts({ Nunito_800ExtraBold });
   const { gameStarted, setGameStarted } = useGameContext();
 
   const [players, setPlayers] = useState(4);
@@ -222,16 +225,6 @@ export default function Index() {
     });
   };
 
-  const getCommanderDamageDisplay = (playerIndex: number) => {
-    const damages = [];
-    for (let i = 0; i < players; i++) {
-      if (i !== playerIndex && commanderDamage[playerIndex][i] > 0) {
-        damages.push(`P${i + 1}: ${commanderDamage[playerIndex][i]}`);
-      }
-    }
-    return damages;
-  };
-
   const getTotalCommanderDamage = (playerIndex: number) => {
     return commanderDamage[playerIndex].reduce((total, damage) => total + damage, 0);
   };
@@ -329,6 +322,8 @@ export default function Index() {
     getAdjustedLifeTotal(index) <= 0 ||
     commanderDamage[index].some((dmg) => dmg >= 21);
 
+  if (!fontsLoaded) return null;
+
   const renderCmdView = (index: number) => (
     <>
       <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
@@ -347,7 +342,7 @@ export default function Index() {
                 lethal && styles.cmdTileLethal,
                 {
                   borderColor: lethal
-                    ? "#B23C2E"
+                    ? "#FF6B5A"
                     : `${PLAYER_ACCENTS[from]}88`,
                 },
               ]}
@@ -405,8 +400,8 @@ export default function Index() {
           layoutStyle,
           {
             borderColor: eliminated
-              ? "rgba(232, 226, 208, 0.12)"
-              : `${PLAYER_ACCENTS[index]}59`,
+              ? "rgba(236, 230, 217, 0.12)"
+              : `${PLAYER_ACCENTS[index]}8C`,
           },
         ]}
       >
@@ -414,49 +409,36 @@ export default function Index() {
           pointerEvents="none"
           style={[
             styles.seatTint,
-            { backgroundColor: `${PLAYER_ACCENTS[index]}0F` },
+            { backgroundColor: `${PLAYER_ACCENTS[index]}21` },
           ]}
         />
-        {(["cornerTL", "cornerTR", "cornerBL", "cornerBR"] as const).map(
-          (corner) => (
-            <View
-              key={corner}
-              pointerEvents="none"
-              style={[
-                styles.corner,
-                styles[corner],
-                {
-                  borderColor: eliminated
-                    ? "rgba(232, 226, 208, 0.15)"
-                    : `${PLAYER_ACCENTS[index]}66`,
-                },
-              ]}
-            />
-          )
-        )}
         {!inCmd && (
           <>
-            <TouchableOpacity
-              style={config.decrementArea}
+            <Pressable
+              style={({ pressed }) => [
+                config.decrementArea,
+                pressed && styles.halfPressed,
+              ]}
               onPress={config.decrementAction}
               onLongPress={() => startHold(index, -10)}
               delayLongPress={400}
               onPressOut={() => stopHold(`${index}:-10`)}
-              activeOpacity={0.7}
             >
               <Text style={[styles.decrementIndicator, { transform: [{ rotate: rotation }] }]}>-</Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={config.incrementArea}
+            <Pressable
+              style={({ pressed }) => [
+                config.incrementArea,
+                pressed && styles.halfPressed,
+              ]}
               onPress={config.incrementAction}
               onLongPress={() => startHold(index, 10)}
               delayLongPress={400}
               onPressOut={() => stopHold(`${index}:10`)}
-              activeOpacity={0.7}
             >
               <Text style={[styles.incrementIndicator, { transform: [{ rotate: rotation }] }]}>+</Text>
-            </TouchableOpacity>
+            </Pressable>
           </>
         )}
 
@@ -484,11 +466,9 @@ export default function Index() {
                 <Text
                   style={[
                     styles.counterText,
-                    {
-                      textShadowColor: `${PLAYER_ACCENTS[index]}59`,
-                      textShadowOffset: { width: 0, height: 0 },
-                      textShadowRadius: 18,
-                    },
+                    sideways && styles.counterTextSideways,
+                    !eliminated &&
+                      getAdjustedLifeTotal(index) < 10 && { color: "#FF6B5A" },
                   ]}
                 >
                   {getAdjustedLifeTotal(index)}
@@ -497,10 +477,15 @@ export default function Index() {
                   <Text
                     style={[
                       styles.deltaChip,
-                      {
-                        color:
-                          pendingDeltas[index] > 0 ? "#5B9668" : "#D66A5A",
-                      },
+                      pendingDeltas[index] > 0
+                        ? {
+                            backgroundColor: "rgba(102, 187, 136, 0.18)",
+                            color: "#8ADBA8",
+                          }
+                        : {
+                            backgroundColor: "rgba(255, 107, 90, 0.18)",
+                            color: "#FF8B7A",
+                          },
                     ]}
                   >
                     {pendingDeltas[index] > 0
@@ -508,13 +493,31 @@ export default function Index() {
                       : pendingDeltas[index]}
                   </Text>
                 )}
-                {getCommanderDamageDisplay(index).length > 0 && (
-                  <View style={styles.commanderDamageContainer}>
-                    {getCommanderDamageDisplay(index).map((damage, idx) => (
-                      <Text key={idx} style={styles.commanderDamageText}>
-                        {damage}
-                      </Text>
-                    ))}
+                {commanderDamage[index].some(
+                  (dmg, from) => from < players && dmg > 0
+                ) && (
+                  <View style={styles.cmdChipsRow}>
+                    {commanderDamage[index].map((dmg, from) =>
+                      from < players && from !== index && dmg > 0 ? (
+                        <Text
+                          key={from}
+                          style={[
+                            styles.cmdChip,
+                            dmg >= 21
+                              ? {
+                                  backgroundColor: "rgba(255, 107, 90, 0.2)",
+                                  color: "#FF6B5A",
+                                }
+                              : {
+                                  backgroundColor: `${PLAYER_ACCENTS[from]}33`,
+                                  color: PLAYER_ACCENTS[from],
+                                },
+                          ]}
+                        >
+                          P{from + 1} {dmg}
+                        </Text>
+                      ) : null
+                    )}
                   </View>
                 )}
               </View>
@@ -638,7 +641,11 @@ export default function Index() {
                 {Array.from({ length: players }).map((_, i) => (
                   <View
                     key={i}
-                    style={[styles.seatDot, seatPosition(i, players)]}
+                    style={[
+                      styles.seatDot,
+                      seatPosition(i, players),
+                      { backgroundColor: PLAYER_ACCENTS[i] },
+                    ]}
                   />
                 ))}
               </View>
@@ -795,11 +802,11 @@ export default function Index() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#0A0C08",
+    backgroundColor: "#0C0F13",
   },
   container: {
     flex: 1,
-    backgroundColor: "#0A0C08",
+    backgroundColor: "#0C0F13",
   },
   startContainer: {
     flex: 1,
@@ -815,7 +822,7 @@ const styles = StyleSheet.create({
   },
   arcaneRing: {
     position: "absolute",
-    borderColor: "#3EA98A",
+    borderColor: "#ECE6D9",
     borderWidth: 1,
   },
   arcaneRingOuter: {
@@ -841,7 +848,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eyebrow: {
-    color: "#63A493",
+    color: "#93989F",
     fontSize: 11,
     letterSpacing: 6,
     marginBottom: 10,
@@ -849,7 +856,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   homeTitle: {
-    color: "#E8E2D0",
+    color: "#ECE6D9",
     fontSize: 42,
     lineHeight: 46,
     textAlign: "center",
@@ -867,7 +874,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(232, 226, 208, 0.4)",
+    borderColor: "rgba(236, 230, 217, 0.4)",
   },
   podBlock: {
     alignItems: "center",
@@ -877,7 +884,7 @@ const styles = StyleSheet.create({
     height: POD_RING_SIZE,
     borderRadius: POD_RING_SIZE / 2,
     borderWidth: 1,
-    borderColor: "rgba(62, 169, 138, 0.35)",
+    borderColor: "rgba(236, 230, 217, 0.35)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -885,20 +892,19 @@ const styles = StyleSheet.create({
     width: POD_RING_SIZE - 58,
     height: POD_RING_SIZE - 58,
     borderRadius: (POD_RING_SIZE - 58) / 2,
-    backgroundColor: "#12150F",
+    backgroundColor: "#141922",
     borderWidth: 1,
-    borderColor: "rgba(62, 169, 138, 0.2)",
+    borderColor: "rgba(236, 230, 217, 0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   podLife: {
-    color: "#E8E2D0",
+    color: "#ECE6D9",
     fontSize: 28,
-    fontFamily: Platform.select({ ios: "Copperplate", default: "serif" }),
-    fontWeight: "700",
+    fontFamily: "Nunito_800ExtraBold",
   },
   podLifeLabel: {
-    color: "#6B6455",
+    color: "#8A8F98",
     fontSize: 10,
     letterSpacing: 4,
     marginTop: 2,
@@ -910,12 +916,11 @@ const styles = StyleSheet.create({
     width: SEAT_DOT_SIZE,
     height: SEAT_DOT_SIZE,
     borderRadius: SEAT_DOT_SIZE / 2,
-    backgroundColor: "#3EA98A",
     borderWidth: 2,
-    borderColor: "#0A0C08",
+    borderColor: "#0C0F13",
   },
   seatLabel: {
-    color: "#6B6455",
+    color: "#8A8F98",
     fontSize: 11,
     letterSpacing: 4,
     marginTop: 16,
@@ -932,34 +937,34 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(232, 226, 208, 0.25)",
+    borderColor: "rgba(236, 230, 217, 0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
   seatChipActive: {
-    backgroundColor: "#3EA98A",
-    borderColor: "#3EA98A",
+    backgroundColor: "#ECE6D9",
+    borderColor: "#ECE6D9",
   },
   seatChipText: {
-    color: "#E8E2D0",
+    color: "#ECE6D9",
     fontSize: 17,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
     fontWeight: "600",
   },
   seatChipTextActive: {
-    color: "#0A0C08",
+    color: "#0C0F13",
   },
   lifeChip: {
     paddingHorizontal: 20,
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(232, 226, 208, 0.25)",
+    borderColor: "rgba(236, 230, 217, 0.25)",
     alignItems: "center",
     justifyContent: "center",
   },
   layoutChipText: {
-    color: "#E8E2D0",
+    color: "#ECE6D9",
     fontSize: 12,
     letterSpacing: 2,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
@@ -972,6 +977,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "column",
     padding: 6,
+    marginTop: 20,
     gap: 6,
   },
   crossEdgeCard: {
@@ -997,35 +1003,34 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingVertical: 16,
     borderRadius: 14,
-    backgroundColor: "#3EA98A",
+    backgroundColor: "#ECE6D9",
     alignItems: "center",
   },
   beginButtonText: {
-    color: "#0A0C08",
+    color: "#0C0F13",
     fontSize: 16,
     letterSpacing: 5,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
     fontWeight: "700",
   },
   footnote: {
-    color: "#6B6455",
+    color: "#8A8F98",
     fontSize: 12,
     marginTop: 14,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   bottomBar: {
     flexDirection: "row",
-    marginTop: 2,
-    marginBottom: 6,
-    marginHorizontal: 6,
-    gap: 6,
+    marginVertical: 10,
+    marginHorizontal: 20,
+    gap: 10,
   },
   homeButton: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(62, 169, 138, 0.4)",
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(236, 230, 217, 0.3)",
   },
   undoButton: {
     flex: 1,
@@ -1034,7 +1039,7 @@ const styles = StyleSheet.create({
     flex: 2,
   },
   homeButtonText: {
-    color: "#63A493",
+    color: "#93989F",
     fontSize: 12,
     letterSpacing: 4,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
@@ -1043,6 +1048,7 @@ const styles = StyleSheet.create({
   board: {
     flex: 1,
     padding: 6,
+    marginTop: 20,
     gap: 6,
   },
   boardRow: {
@@ -1055,10 +1061,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   basePlayerContainer: {
-    backgroundColor: "#12150F",
-    borderColor: "rgba(232, 226, 208, 0.2)",
-    borderWidth: 1,
-    borderRadius: 16,
+    backgroundColor: "#141922",
+    borderColor: "rgba(236, 230, 217, 0.2)",
+    borderWidth: 1.5,
+    borderRadius: 24,
     alignItems: "center",
     padding: 8,
     position: "relative",
@@ -1104,68 +1110,46 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   decrementIndicator: {
-    fontSize: 60,
-    fontWeight: "200",
-    color: "rgba(232, 226, 208, 0.1)",
+    fontSize: 44,
+    fontWeight: "400",
+    color: "rgba(236, 230, 217, 0.38)",
   },
   incrementIndicator: {
-    fontSize: 60,
-    fontWeight: "200",
-    color: "rgba(232, 226, 208, 0.1)",
+    fontSize: 44,
+    fontWeight: "400",
+    color: "rgba(236, 230, 217, 0.38)",
   },
   seatTint: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 16,
+    borderRadius: 22,
   },
-  corner: {
-    position: "absolute",
-    width: 14,
-    height: 14,
-  },
-  cornerTL: {
-    top: 8,
-    left: 8,
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-  },
-  cornerTR: {
-    top: 8,
-    right: 8,
-    borderTopWidth: 1,
-    borderRightWidth: 1,
-  },
-  cornerBL: {
-    bottom: 8,
-    left: 8,
-    borderBottomWidth: 1,
-    borderLeftWidth: 1,
-  },
-  cornerBR: {
-    bottom: 8,
-    right: 8,
-    borderBottomWidth: 1,
-    borderRightWidth: 1,
+  halfPressed: {
+    backgroundColor: "rgba(236, 230, 217, 0.07)",
+    borderRadius: 22,
   },
   playerText: {
     fontSize: 12,
     letterSpacing: 3,
     textTransform: "uppercase",
     textAlign: "center",
+    marginBottom: 10,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
     fontWeight: "600",
   },
   counterContainer: {
-    marginTop: 4,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 80,
     minWidth: 120,
   },
   counterText: {
-    fontSize: 84,
-    color: "#E8E2D0",
-    fontFamily: Platform.select({ ios: "Copperplate", default: "serif" }),
-    fontWeight: "700",
+    fontSize: 96,
+    lineHeight: 110,
+    color: "#ECE6D9",
+    fontFamily: "Nunito_800ExtraBold",
+  },
+  counterTextSideways: {
+    fontSize: 78,
+    lineHeight: 90,
   },
   lifeBreakdownText: {
     fontSize: 12,
@@ -1173,30 +1157,37 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 2,
   },
-  commanderDamageContainer: {
-    marginTop: 5,
-    alignItems: "center",
+  cmdChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 4,
+    marginTop: 4,
+    maxWidth: 200,
   },
-  commanderDamageText: {
+  cmdChip: {
     fontSize: 10,
-    fontWeight: "bold",
-    color: "#D66A5A",
-    marginVertical: 1,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9,
+    overflow: "hidden",
   },
   commanderButton: {
-    backgroundColor: "rgba(62, 169, 138, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(62, 169, 138, 0.45)",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
+    backgroundColor: "rgba(236, 230, 217, 0.06)",
+    borderWidth: 1.5,
+    borderColor: "rgba(236, 230, 217, 0.35)",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 22,
     alignSelf: "center",
   },
   commanderButtonText: {
-    color: "#3EA98A",
-    fontSize: 11,
+    color: "#ECE6D9",
+    fontSize: 12,
     letterSpacing: 2,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   cmdTileRow: {
     flexDirection: "row",
@@ -1211,7 +1202,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderRadius: 12,
-    backgroundColor: "rgba(232, 226, 208, 0.04)",
+    backgroundColor: "rgba(236, 230, 217, 0.04)",
     paddingHorizontal: 2,
     paddingVertical: 2,
   },
@@ -1220,7 +1211,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cmdTileButtonText: {
-    color: "rgba(232, 226, 208, 0.6)",
+    color: "rgba(236, 230, 217, 0.6)",
     fontSize: 18,
     fontWeight: "600",
   },
@@ -1229,7 +1220,7 @@ const styles = StyleSheet.create({
     minWidth: 26,
   },
   cmdTileLethal: {
-    backgroundColor: "rgba(178, 60, 46, 0.18)",
+    backgroundColor: "rgba(255, 107, 90, 0.18)",
   },
   cmdSideways: {
     width: 260,
@@ -1242,38 +1233,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    marginTop: 8,
+    marginTop: 4,
   },
   tokenButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "rgba(232, 226, 208, 0.1)",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: "rgba(236, 230, 217, 0.28)",
     alignItems: "center",
     justifyContent: "center",
   },
   tokenButtonActive: {
-    borderColor: "#3EA98A",
-    backgroundColor: "rgba(62, 169, 138, 0.18)",
+    borderColor: "#ECE6D9",
+    backgroundColor: "#ECE6D9",
   },
   tokenText: {
-    color: "rgba(232, 226, 208, 0.3)",
-    fontSize: 15,
+    color: "rgba(236, 230, 217, 0.45)",
+    fontSize: 19,
   },
   tokenTextActive: {
-    color: "#3EA98A",
+    color: "#0C0F13",
   },
   deltaChip: {
     position: "absolute",
     right: -14,
-    top: 6,
-    fontSize: 16,
-    fontWeight: "700",
+    top: 2,
+    height: 22,
+    fontSize: 12,
+    fontWeight: "800",
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: "hidden",
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   defeatedText: {
-    color: "#D66A5A",
+    color: "#FF6B5A",
     fontSize: 11,
     letterSpacing: 3,
     textAlign: "center",
@@ -1290,12 +1286,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   cmdTileValue: {
-    color: "#E8E2D0",
+    color: "#ECE6D9",
     fontSize: 18,
-    fontFamily: Platform.select({ ios: "Copperplate", default: "serif" }),
-    fontWeight: "700",
+    fontFamily: "Nunito_800ExtraBold",
   },
   cmdTileValueLethal: {
-    color: "#D66A5A",
+    color: "#FF6B5A",
   },
 });
