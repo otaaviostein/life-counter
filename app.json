@@ -12,7 +12,8 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.otaviostein.lifecounter",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "appleTeamId": "YVE9YEL486"
     },
     "android": {
       "package": "com.otaviostein.lifecounter",
