@@ -3,7 +3,6 @@ import { useKeepAwake } from "expo-keep-awake";
 import * as Haptics from "expo-haptics";
 import { useFonts, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import {
-  Alert,
   Animated,
   Image,
   Platform,
@@ -140,8 +139,8 @@ export default function Index() {
   const pendingTimers = useRef<(ReturnType<typeof setTimeout> | null)[]>(
     Array(6).fill(null)
   );
-  const [lifeLog, setLifeLog] = useState<{ player: number; delta: number }[]>([]);
   const [poison, setPoison] = useState<number[]>(Array(6).fill(0));
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const updateCounter = (index: number, delta: number) => {
     setCounters((prev) => {
@@ -155,13 +154,9 @@ export default function Index() {
     const existing = pendingTimers.current[index];
     if (existing) clearTimeout(existing);
     pendingTimers.current[index] = setTimeout(() => {
-      const amount = pendingRef.current[index];
       pendingRef.current[index] = 0;
       pendingTimers.current[index] = null;
       setPendingDeltas([...pendingRef.current]);
-      if (amount !== 0) {
-        setLifeLog((log) => [...log, { player: index, delta: amount }]);
-      }
     }, COMMIT_DELAY_MS);
   };
 
@@ -186,17 +181,6 @@ export default function Index() {
 
   useEffect(() => stopAllHolds, []);
 
-  const undoLast = () => {
-    if (lifeLog.length === 0) return;
-    const last = lifeLog[lifeLog.length - 1];
-    setLifeLog(lifeLog.slice(0, -1));
-    setCounters((prev) => {
-      const next = [...prev];
-      next[last.player] -= last.delta;
-      return next;
-    });
-  };
-
   const resetGameState = () => {
     entrance.forEach((v) => v.setValue(0));
     stopAllHolds();
@@ -204,9 +188,16 @@ export default function Index() {
     pendingTimers.current = Array(6).fill(null);
     pendingRef.current = Array(6).fill(0);
     setPendingDeltas(Array(6).fill(0));
-    setLifeLog([]);
     setPoison(Array(6).fill(0));
     setCmdOpen(Array(6).fill(false));
+    setMenuOpen(false);
+  };
+
+  const endGame = (goHome: boolean) => {
+    setCounters(Array(6).fill(startingLife));
+    setCommanderDamage(Array(6).fill(null).map(() => Array(6).fill(0)));
+    resetGameState();
+    if (goHome) setGameStarted(false);
   };
 
   const lightTap = () => {
@@ -782,46 +773,55 @@ export default function Index() {
           </View>
         ) : (
           <>
-            {isCross ? renderCross() : renderGrid()}
-            <View style={styles.bottomBar}>
-              <TouchableOpacity
-                style={[
-                  styles.homeButton,
-                  styles.undoButton,
-                  lifeLog.length === 0 && styles.chipDisabled,
-                ]}
-                onPress={undoLast}
-                activeOpacity={lifeLog.length === 0 ? 1 : 0.7}
-              >
-                <Text style={styles.homeButtonText}>↺ UNDO</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.homeButton, styles.endButton]}
-                onPress={() => {
-                  Alert.alert(
-                    "End game?",
-                    "Life totals and commander damage will be reset.",
-                    [
-                      { text: "Keep playing", style: "cancel" },
-                      {
-                        text: "End game",
-                        style: "destructive",
-                        onPress: () => {
-                          setCounters(Array(6).fill(startingLife));
-                          setCommanderDamage(
-                            Array(6).fill(null).map(() => Array(6).fill(0))
-                          );
-                          resetGameState();
-                          setGameStarted(false);
-                        },
-                      },
-                    ]
-                  );
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.homeButtonText}>✦ END GAME ✦</Text>
-              </TouchableOpacity>
+            <View style={styles.gameArea}>
+              {isCross ? renderCross() : renderGrid()}
+              <View pointerEvents="box-none" style={styles.centerOverlay}>
+                <TouchableOpacity
+                  style={styles.endOrb}
+                  onPress={() => {
+                    lightTap();
+                    setMenuOpen(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.endOrbText}>✦</Text>
+                </TouchableOpacity>
+              </View>
+
+              {menuOpen && (
+                <View style={styles.menuLayer}>
+                  <Pressable
+                    style={styles.menuBackdrop}
+                    onPress={() => setMenuOpen(false)}
+                  />
+                  <View style={styles.menuCard}>
+                    <Text style={styles.menuTitle}>✦ GAME MENU ✦</Text>
+                    <TouchableOpacity
+                      style={[styles.menuButton, styles.menuButtonDanger]}
+                      onPress={() => endGame(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.menuButtonText, { color: "#FF6B5A" }]}>
+                        RESET GAME
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.menuButton}
+                      onPress={() => endGame(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.menuButtonText}>BACK TO HOME</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.menuCancel}
+                      onPress={() => setMenuOpen(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.menuCancelText}>CANCEL</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           </>
         )}
@@ -1009,6 +1009,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     padding: 6,
     marginTop: 20,
+    marginBottom: 10,
     gap: 6,
   },
   crossEdgeCard: {
@@ -1050,36 +1051,101 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
-  bottomBar: {
-    flexDirection: "row",
-    marginVertical: 10,
-    marginHorizontal: 20,
-    gap: 10,
+  gameArea: {
+    flex: 1,
   },
-  homeButton: {
-    paddingVertical: 16,
+  centerOverlay: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
+    justifyContent: "center",
+  },
+  endOrb: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#141922",
+    borderWidth: 1.5,
+    borderColor: "rgba(236, 230, 217, 0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  endOrbText: {
+    color: "#93989F",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  menuLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  menuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(12, 15, 19, 0.78)",
+  },
+  menuCard: {
+    width: 260,
+    backgroundColor: "#141922",
+    borderWidth: 1.5,
+    borderColor: "rgba(236, 230, 217, 0.18)",
+    borderRadius: 20,
+    padding: 18,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.6,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+  menuTitle: {
+    color: "#93989F",
+    fontSize: 11,
+    letterSpacing: 3,
+    textAlign: "center",
+    fontWeight: "700",
+    marginBottom: 4,
+    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
+  },
+  menuButton: {
+    paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: "rgba(236, 230, 217, 0.3)",
+    alignItems: "center",
   },
-  undoButton: {
-    flex: 1,
+  menuButtonDanger: {
+    borderColor: "rgba(255, 107, 90, 0.5)",
+    backgroundColor: "rgba(255, 107, 90, 0.1)",
   },
-  endButton: {
-    flex: 2,
+  menuButtonText: {
+    color: "#ECE6D9",
+    fontSize: 13,
+    letterSpacing: 2,
+    fontWeight: "700",
+    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
-  homeButtonText: {
+  menuCancel: {
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  menuCancelText: {
     color: "#93989F",
     fontSize: 12,
-    letterSpacing: 4,
-    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
+    letterSpacing: 2,
     fontWeight: "600",
+    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   board: {
     flex: 1,
     padding: 6,
     marginTop: 20,
+    marginBottom: 10,
     gap: 6,
   },
   boardRow: {
