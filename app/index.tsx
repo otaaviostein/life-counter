@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useKeepAwake } from "expo-keep-awake";
+import * as Haptics from "expo-haptics";
 import { useFonts, Nunito_800ExtraBold } from "@expo-google-fonts/nunito";
 import {
   Alert,
   Animated,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -139,8 +141,7 @@ export default function Index() {
     Array(6).fill(null)
   );
   const [lifeLog, setLifeLog] = useState<{ player: number; delta: number }[]>([]);
-  const [monarch, setMonarch] = useState<number | null>(null);
-  const [initiative, setInitiative] = useState<number | null>(null);
+  const [poison, setPoison] = useState<number[]>(Array(6).fill(0));
 
   const updateCounter = (index: number, delta: number) => {
     setCounters((prev) => {
@@ -204,9 +205,21 @@ export default function Index() {
     pendingRef.current = Array(6).fill(0);
     setPendingDeltas(Array(6).fill(0));
     setLifeLog([]);
-    setMonarch(null);
-    setInitiative(null);
+    setPoison(Array(6).fill(0));
     setCmdOpen(Array(6).fill(false));
+  };
+
+  const lightTap = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  };
+
+  const updatePoison = (index: number, delta: number) => {
+    lightTap();
+    setPoison((prev) => {
+      const next = [...prev];
+      next[index] = Math.min(10, Math.max(0, next[index] + delta));
+      return next;
+    });
   };
 
   const toggleCmd = (index: number) => {
@@ -320,6 +333,7 @@ export default function Index() {
 
   const isEliminated = (index: number) =>
     getAdjustedLifeTotal(index) <= 0 ||
+    poison[index] >= 10 ||
     commanderDamage[index].some((dmg) => dmg >= 21);
 
   if (!fontsLoaded) return null;
@@ -392,6 +406,15 @@ export default function Index() {
     const inCmd = cmdOpen[index];
     const sideways = rotation === "90deg" || rotation === "-90deg";
     const eliminated = isEliminated(index);
+    // The seat owner's bottom-right corner, mapped to screen coordinates.
+    const chipCorner =
+      rotation === "90deg"
+        ? { bottom: 12, left: 12 }
+        : rotation === "-90deg"
+          ? { top: 12, right: 12 }
+          : rotation === "180deg"
+            ? { top: 12, left: 12 }
+            : { bottom: 12, right: 12 };
     return (
       <View
         key={index}
@@ -456,9 +479,6 @@ export default function Index() {
           ) : (
             <>
               <View pointerEvents="none">
-              {eliminated && (
-                <Text style={styles.defeatedText}>☠ DEFEATED</Text>
-              )}
               <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
                 Player {index + 1}
               </Text>
@@ -523,57 +543,68 @@ export default function Index() {
               </View>
               </View>
               {players > 1 && (
-                <View style={styles.cardActionsRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.tokenButton,
-                      monarch === index && styles.tokenButtonActive,
-                    ]}
-                    onPress={() => setMonarch(monarch === index ? null : index)}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.tokenText,
-                        monarch === index && styles.tokenTextActive,
-                      ]}
-                    >
-                      ♛
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.commanderButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      toggleCmd(index);
-                    }}
-                  >
-                    <Text style={styles.commanderButtonText}>CMD</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.tokenButton,
-                      initiative === index && styles.tokenButtonActive,
-                    ]}
-                    onPress={() =>
-                      setInitiative(initiative === index ? null : index)
-                    }
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.tokenText,
-                        initiative === index && styles.tokenTextActive,
-                      ]}
-                    >
-                      ⚑
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  style={styles.commanderButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleCmd(index);
+                  }}
+                >
+                  <Text style={styles.commanderButtonText}>CMD</Text>
+                </TouchableOpacity>
               )}
             </>
           )}
         </View>
+
+        {!inCmd && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.poisonChip,
+              chipCorner,
+              { transform: [{ rotate: rotation }] },
+              poison[index] > 0 && styles.poisonChipActive,
+              poison[index] >= 10 && styles.poisonChipLethal,
+              eliminated && styles.eliminatedContent,
+              pressed && styles.chipPressed,
+            ]}
+            onPress={() => updatePoison(index, 1)}
+            onLongPress={() => updatePoison(index, -1)}
+            delayLongPress={400}
+            accessibilityLabel={`Poison: ${poison[index]}. Tap to add.`}
+          >
+            <Image
+              source={require("../assets/images/phyrexian.png")}
+              style={[
+                styles.poisonChipIcon,
+                poison[index] > 0 && { tintColor: "#66BB88" },
+                poison[index] >= 10 && { tintColor: "#FF6B5A" },
+              ]}
+            />
+            <Text
+              style={[
+                styles.poisonChipCount,
+                poison[index] === 0 && styles.poisonChipMuted,
+                poison[index] >= 10 && { color: "#FF6B5A" },
+              ]}
+            >
+              {poison[index]}
+            </Text>
+            {poison[index] > 0 && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.poisonBadge,
+                  pressed && styles.chipPressed,
+                ]}
+                hitSlop={8}
+                onPress={() => updatePoison(index, -1)}
+                accessibilityLabel="Remove one poison"
+              >
+                <Text style={styles.poisonBadgeText}>-</Text>
+              </Pressable>
+            )}
+          </Pressable>
+        )}
       </View>
     );
   };
@@ -1182,6 +1213,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 22,
     alignSelf: "center",
+    marginTop: 6,
   },
   commanderButtonText: {
     color: "#ECE6D9",
@@ -1228,32 +1260,61 @@ const styles = StyleSheet.create({
   cardContent: {
     zIndex: 3,
   },
-  cardActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-  tokenButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  poisonChip: {
+    position: "absolute",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 1.5,
-    borderColor: "rgba(236, 230, 217, 0.28)",
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 3,
+  },
+  poisonChipActive: {
+    borderColor: "#66BB88",
+    backgroundColor: "rgba(102, 187, 136, 0.16)",
+  },
+  poisonChipLethal: {
+    borderColor: "#FF6B5A",
+    backgroundColor: "rgba(255, 107, 90, 0.16)",
+  },
+  poisonChipIcon: {
+    width: 13,
+    height: 23,
+    tintColor: "rgba(236, 230, 217, 0.35)",
+    marginBottom: 1,
+  },
+  poisonChipCount: {
+    color: "#ECE6D9",
+    fontSize: 15,
+    lineHeight: 18,
+    fontFamily: "Nunito_800ExtraBold",
+  },
+  poisonChipMuted: {
+    color: "rgba(236, 230, 217, 0.35)",
+  },
+  chipPressed: {
+    opacity: 0.55,
+  },
+  poisonBadge: {
+    position: "absolute",
+    top: -7,
+    right: -7,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#2A3242",
+    borderWidth: 1,
+    borderColor: "rgba(236, 230, 217, 0.35)",
     alignItems: "center",
     justifyContent: "center",
   },
-  tokenButtonActive: {
-    borderColor: "#ECE6D9",
-    backgroundColor: "#ECE6D9",
-  },
-  tokenText: {
-    color: "rgba(236, 230, 217, 0.45)",
-    fontSize: 19,
-  },
-  tokenTextActive: {
-    color: "#0C0F13",
+  poisonBadgeText: {
+    color: "#ECE6D9",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 16,
   },
   deltaChip: {
     position: "absolute",
@@ -1266,15 +1327,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     overflow: "hidden",
-    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
-  },
-  defeatedText: {
-    color: "#FF6B5A",
-    fontSize: 11,
-    letterSpacing: 3,
-    textAlign: "center",
-    marginBottom: 2,
-    fontWeight: "700",
     fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   eliminatedContent: {
