@@ -300,9 +300,11 @@ export default function Index() {
           styles.basePlayerContainer,
           layoutStyle,
           {
-            borderColor: eliminated
-              ? "rgba(236, 230, 217, 0.12)"
-              : `${PLAYER_ACCENTS[index]}8C`,
+            borderColor: isAttacker
+              ? `${PLAYER_ACCENTS[cmdFor]}E6`
+              : eliminated && !cmdMode
+                ? "rgba(236, 230, 217, 0.12)"
+                : `${PLAYER_ACCENTS[index]}8C`,
           },
         ]}
       >
@@ -368,14 +370,12 @@ export default function Index() {
               <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
                 Player {index + 1}
               </Text>
-              <Text style={[styles.cmdBanner, { color: PLAYER_ACCENTS[cmdFor] }]}>
-                CMD DMG → P{cmdFor + 1}
-              </Text>
               <View style={styles.counterContainer}>
                 <Text
                   style={[
                     styles.counterText,
                     sideways && styles.counterTextSideways,
+                    { color: PLAYER_ACCENTS[cmdFor] },
                     dmgToReceiver >= 21 && { color: "#FF6B5A" },
                   ]}
                 >
@@ -1226,14 +1226,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 2,
     fontWeight: "700",
-  },
-  cmdBanner: {
-    fontSize: 11,
-    letterSpacing: 2,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: 6,
-    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   cardContent: {
     zIndex: 3,
