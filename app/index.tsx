@@ -1158,7 +1158,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   basePlayerContainer: {
-    backgroundColor: "#141922",
+    backgroundColor: "#1A212C",
     borderColor: "rgba(236, 230, 217, 0.2)",
     borderWidth: 1.5,
     borderRadius: 24,
@@ -1388,7 +1388,7 @@ const styles = StyleSheet.create({
     top: 2,
     height: 22,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "500",
     paddingHorizontal: 9,
     paddingVertical: 2,
     borderRadius: 10,
