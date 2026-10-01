@@ -40,23 +40,6 @@ const CROSS_ROTATIONS: Record<CrossSlot, string> = {
   bottom: "0deg",
 };
 
-// Normalized seat centers on screen, per layout, used to place commander
-// damage tiles in the direction each opponent actually sits.
-const GRID_POSITIONS: Record<number, [number, number][]> = {
-  1: [[0, 0]],
-  2: [[0, -1], [0, 1]],
-  3: [[-1, -1], [1, -1], [0, 1]],
-  4: [[-1, -1], [1, -1], [-1, 1], [1, 1]],
-  5: [[-1, -1], [1, -1], [-1, 0], [1, 0], [0, 1]],
-  6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
-};
-const CROSS_POSITIONS: Record<CrossSlot, [number, number]> = {
-  top: [0, -1],
-  left: [-1, 0],
-  right: [1, 0],
-  bottom: [0, 1],
-};
-
 const COMMIT_DELAY_MS = 1800;
 
 // Row structure of the grid board per player count; every card flexes evenly.
@@ -133,7 +116,8 @@ export default function Index() {
   const [commanderDamage, setCommanderDamage] = useState(
     Array(6).fill(null).map(() => Array(6).fill(0))
   );
-  const [cmdOpen, setCmdOpen] = useState<boolean[]>(Array(6).fill(false));
+  // Player currently entering commander damage they received, or null.
+  const [cmdFor, setCmdFor] = useState<number | null>(null);
   const [pendingDeltas, setPendingDeltas] = useState<number[]>(Array(6).fill(0));
   const pendingRef = useRef<number[]>(Array(6).fill(0));
   const pendingTimers = useRef<(ReturnType<typeof setTimeout> | null)[]>(
@@ -189,7 +173,7 @@ export default function Index() {
     pendingRef.current = Array(6).fill(0);
     setPendingDeltas(Array(6).fill(0));
     setPoison(Array(6).fill(0));
-    setCmdOpen(Array(6).fill(false));
+    setCmdFor(null);
     setMenuOpen(false);
   };
 
@@ -213,15 +197,8 @@ export default function Index() {
     });
   };
 
-  const toggleCmd = (index: number) => {
-    setCmdOpen((prev) => {
-      const next = [...prev];
-      next[index] = !next[index];
-      return next;
-    });
-  };
-
   const updateCommanderDamage = (fromPlayer: number, toPlayer: number, delta: number) => {
+    lightTap();
     setCommanderDamage((prev) => {
       const newDamage = prev.map(row => [...row]);
       newDamage[toPlayer][fromPlayer] = Math.max(0, newDamage[toPlayer][fromPlayer] + delta);
@@ -289,39 +266,6 @@ export default function Index() {
     return rotationMap[index] || "0deg";
   };
 
-  const seatScreenPos = (index: number): [number, number] =>
-    isCross
-      ? CROSS_POSITIONS[CROSS_SLOTS[players][index]]
-      : GRID_POSITIONS[players][index];
-
-  // Where an opponent sits relative to the viewer, in the viewer's own
-  // orientation ("ahead", "to my left", ...), so CMD tiles can mirror the table.
-  const toViewerFrame = (viewer: number, other: number): [number, number] => {
-    const [vx, vy] = seatScreenPos(viewer);
-    const [ox, oy] = seatScreenPos(other);
-    const dx = ox - vx;
-    const dy = oy - vy;
-    const rot = getPlayerRotation(viewer);
-    if (rot === "180deg") return [-dx, -dy];
-    if (rot === "90deg") return [dy, -dx];
-    if (rot === "-90deg") return [-dy, dx];
-    return [dx, dy];
-  };
-
-  const spatialCmdRows = (viewer: number) => {
-    const ahead: { from: number; fx: number }[] = [];
-    const level: { from: number; fx: number }[] = [];
-    const behind: { from: number; fx: number }[] = [];
-    for (let from = 0; from < players; from++) {
-      if (from === viewer) continue;
-      const [fx, fy] = toViewerFrame(viewer, from);
-      (fy < 0 ? ahead : fy === 0 ? level : behind).push({ from, fx });
-    }
-    return [ahead, level, behind]
-      .map((row) => row.sort((a, b) => a.fx - b.fx).map((o) => o.from))
-      .filter((row) => row.length > 0);
-  };
-
   const isEliminated = (index: number) =>
     getAdjustedLifeTotal(index) <= 0 ||
     poison[index] >= 10 ||
@@ -329,74 +273,17 @@ export default function Index() {
 
   if (!fontsLoaded) return null;
 
-  const renderCmdView = (index: number) => (
-    <>
-      <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
-        CMD · Life {getAdjustedLifeTotal(index)}
-      </Text>
-      {spatialCmdRows(index).map((row, rowIdx) => (
-        <View key={rowIdx} style={styles.cmdTileRow}>
-        {row.map((from) => {
-          const dmg = commanderDamage[index][from];
-          const lethal = dmg >= 21;
-          return (
-            <View
-              key={from}
-              style={[
-                styles.cmdTile,
-                lethal && styles.cmdTileLethal,
-                {
-                  borderColor: lethal
-                    ? "#FF6B5A"
-                    : `${PLAYER_ACCENTS[from]}88`,
-                },
-              ]}
-            >
-              <TouchableOpacity
-                style={styles.cmdTileButton}
-                onPress={() => updateCommanderDamage(from, index, -1)}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.cmdTileButtonText}>-</Text>
-              </TouchableOpacity>
-              <View style={styles.cmdTileCenter}>
-                <Text style={[styles.cmdTileLabel, { color: PLAYER_ACCENTS[from] }]}>
-                  P{from + 1}
-                </Text>
-                <Text
-                  style={[styles.cmdTileValue, lethal && styles.cmdTileValueLethal]}
-                >
-                  {dmg}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.cmdTileButton}
-                onPress={() => updateCommanderDamage(from, index, 1)}
-                activeOpacity={0.6}
-              >
-                <Text style={styles.cmdTileButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })}
-        </View>
-      ))}
-      <TouchableOpacity
-        style={styles.commanderButton}
-        onPress={() => toggleCmd(index)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.commanderButtonText}>DONE</Text>
-      </TouchableOpacity>
-    </>
-  );
-
   const renderPlayerCard = (index: number, layoutStyle: any) => {
     const config = getRotationAwareTouchConfig(index);
     const rotation = getPlayerRotation(index);
-    const inCmd = cmdOpen[index];
     const sideways = rotation === "90deg" || rotation === "-90deg";
     const eliminated = isEliminated(index);
+    // Board-wide commander damage mode: cmdFor is the receiving player;
+    // every other seat becomes the entry surface for that attacker's damage.
+    const cmdMode = cmdFor !== null;
+    const isReceiver = cmdFor === index;
+    const isAttacker = cmdMode && !isReceiver;
+    const dmgToReceiver = isAttacker ? commanderDamage[cmdFor][index] : 0;
     // The seat owner's bottom-right corner, mapped to screen coordinates.
     const chipCorner =
       rotation === "90deg"
@@ -426,17 +313,23 @@ export default function Index() {
             { backgroundColor: `${PLAYER_ACCENTS[index]}30` },
           ]}
         />
-        {!inCmd && (
+        {!isReceiver && (
           <>
             <Pressable
               style={({ pressed }) => [
                 config.decrementArea,
                 pressed && styles.halfPressed,
               ]}
-              onPress={config.decrementAction}
-              onLongPress={() => startHold(index, -10)}
+              onPress={
+                isAttacker
+                  ? () => updateCommanderDamage(index, cmdFor, -1)
+                  : config.decrementAction
+              }
+              onLongPress={isAttacker ? undefined : () => startHold(index, -10)}
               delayLongPress={400}
-              onPressOut={() => stopHold(`${index}:-10`)}
+              onPressOut={
+                isAttacker ? undefined : () => stopHold(`${index}:-10`)
+              }
             >
               <Text style={[styles.decrementIndicator, { transform: [{ rotate: rotation }] }]}>-</Text>
             </Pressable>
@@ -446,10 +339,16 @@ export default function Index() {
                 config.incrementArea,
                 pressed && styles.halfPressed,
               ]}
-              onPress={config.incrementAction}
-              onLongPress={() => startHold(index, 10)}
+              onPress={
+                isAttacker
+                  ? () => updateCommanderDamage(index, cmdFor, 1)
+                  : config.incrementAction
+              }
+              onLongPress={isAttacker ? undefined : () => startHold(index, 10)}
               delayLongPress={400}
-              onPressOut={() => stopHold(`${index}:10`)}
+              onPressOut={
+                isAttacker ? undefined : () => stopHold(`${index}:10`)
+              }
             >
               <Text style={[styles.incrementIndicator, { transform: [{ rotate: rotation }] }]}>+</Text>
             </Pressable>
@@ -461,12 +360,52 @@ export default function Index() {
           style={[
             styles.cardContent,
             { transform: [{ rotate: rotation }] },
-            inCmd && sideways && styles.cmdSideways,
-            eliminated && !inCmd && styles.eliminatedContent,
+            eliminated && !cmdMode && styles.eliminatedContent,
           ]}
         >
-          {inCmd ? (
-            renderCmdView(index)
+          {isAttacker ? (
+            <View pointerEvents="none">
+              <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
+                Player {index + 1}
+              </Text>
+              <Text style={[styles.cmdBanner, { color: PLAYER_ACCENTS[cmdFor] }]}>
+                CMD DMG → P{cmdFor + 1}
+              </Text>
+              <View style={styles.counterContainer}>
+                <Text
+                  style={[
+                    styles.counterText,
+                    sideways && styles.counterTextSideways,
+                    dmgToReceiver >= 21 && { color: "#FF6B5A" },
+                  ]}
+                >
+                  {dmgToReceiver}
+                </Text>
+              </View>
+            </View>
+          ) : isReceiver ? (
+            <>
+              <View pointerEvents="none" style={{ alignItems: "center" }}>
+                <Text style={[styles.playerText, { color: PLAYER_ACCENTS[index] }]}>
+                  Player {index + 1}
+                </Text>
+                <Text
+                  style={[
+                    styles.counterText,
+                    sideways && styles.counterTextSideways,
+                  ]}
+                >
+                  {getAdjustedLifeTotal(index)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.commanderButton}
+                onPress={() => setCmdFor(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.commanderButtonText}>DONE</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <>
               <View pointerEvents="none">
@@ -538,7 +477,8 @@ export default function Index() {
                   style={styles.commanderButton}
                   onPress={(e) => {
                     e.stopPropagation();
-                    toggleCmd(index);
+                    lightTap();
+                    setCmdFor(index);
                   }}
                 >
                   <Text style={styles.commanderButtonText}>CMD</Text>
@@ -548,7 +488,7 @@ export default function Index() {
           )}
         </View>
 
-        {!inCmd && (
+        {!cmdMode && (
           <Pressable
             style={({ pressed }) => [
               styles.poisonChip,
@@ -1287,41 +1227,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontWeight: "700",
   },
-  cmdTileRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 6,
-    marginVertical: 8,
-    maxWidth: 280,
-  },
-  cmdTile: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 12,
-    backgroundColor: "rgba(236, 230, 217, 0.04)",
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-  },
-  cmdTileButton: {
-    paddingHorizontal: 7,
-    paddingVertical: 8,
-  },
-  cmdTileButtonText: {
-    color: "rgba(236, 230, 217, 0.6)",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  cmdTileCenter: {
-    alignItems: "center",
-    minWidth: 26,
-  },
-  cmdTileLethal: {
-    backgroundColor: "rgba(255, 107, 90, 0.18)",
-  },
-  cmdSideways: {
-    width: 260,
+  cmdBanner: {
+    fontSize: 11,
+    letterSpacing: 2,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
+    fontFamily: Platform.select({ ios: "Avenir Next", default: "sans-serif" }),
   },
   cardContent: {
     zIndex: 3,
@@ -1397,18 +1309,5 @@ const styles = StyleSheet.create({
   },
   eliminatedContent: {
     opacity: 0.4,
-  },
-  cmdTileLabel: {
-    fontSize: 9,
-    letterSpacing: 1,
-    fontWeight: "700",
-  },
-  cmdTileValue: {
-    color: "#ECE6D9",
-    fontSize: 18,
-    fontFamily: "Nunito_800ExtraBold",
-  },
-  cmdTileValueLethal: {
-    color: "#FF6B5A",
   },
 });
