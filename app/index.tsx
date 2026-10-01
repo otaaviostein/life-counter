@@ -18,12 +18,12 @@ import { useGameContext } from "./context/GameContext";
 
 const MANA_COLORS = ["#F5F0DC", "#1E6FA9", "#4A4238", "#FF6B5A", "#3F7A4C"];
 const PLAYER_ACCENTS = [
-  "#E3D9BB", // ivory
-  "#62A9E3", // azure
-  "#A78FD9", // amethyst
-  "#E0655A", // garnet
-  "#66BB88", // moss
-  "#D678B4", // orchid
+  "#EDE4C8", // pastel ivory
+  "#9BC8EE", // pastel sky
+  "#C5B3E6", // pastel lavender
+  "#F0998D", // pastel salmon
+  "#9FD8B4", // pastel mint
+  "#EBA8CD", // pastel pink
 ];
 
 type CrossSlot = "top" | "left" | "right" | "bottom";
@@ -423,7 +423,7 @@ export default function Index() {
           pointerEvents="none"
           style={[
             styles.seatTint,
-            { backgroundColor: `${PLAYER_ACCENTS[index]}21` },
+            { backgroundColor: `${PLAYER_ACCENTS[index]}30` },
           ]}
         />
         {!inCmd && (
