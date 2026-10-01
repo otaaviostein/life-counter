@@ -274,9 +274,7 @@ export default function Index() {
   if (!fontsLoaded) return null;
 
   const renderPlayerCard = (index: number, layoutStyle: any) => {
-    const config = getRotationAwareTouchConfig(index);
     const rotation = getPlayerRotation(index);
-    const sideways = rotation === "90deg" || rotation === "-90deg";
     const eliminated = isEliminated(index);
     // Board-wide commander damage mode: cmdFor is the receiving player;
     // every other seat becomes the entry surface for that attacker's damage.
@@ -284,6 +282,11 @@ export default function Index() {
     const isReceiver = cmdFor === index;
     const isAttacker = cmdMode && !isReceiver;
     const dmgToReceiver = isAttacker ? commanderDamage[cmdFor][index] : 0;
+    // In CMD mode the receiver reads and taps the attacker cards, so their
+    // content and tap halves orient to the receiver's seat, not the card's.
+    const displayRotation = isAttacker ? getPlayerRotation(cmdFor) : rotation;
+    const sideways = displayRotation === "90deg" || displayRotation === "-90deg";
+    const config = getRotationAwareTouchConfig(isAttacker ? cmdFor : index);
     // The seat owner's bottom-right corner, mapped to screen coordinates.
     const chipCorner =
       rotation === "90deg"
@@ -333,7 +336,7 @@ export default function Index() {
                 isAttacker ? undefined : () => stopHold(`${index}:-10`)
               }
             >
-              <Text style={[styles.decrementIndicator, { transform: [{ rotate: rotation }] }]}>-</Text>
+              <Text style={[styles.decrementIndicator, { transform: [{ rotate: displayRotation }] }]}>-</Text>
             </Pressable>
 
             <Pressable
@@ -352,7 +355,7 @@ export default function Index() {
                 isAttacker ? undefined : () => stopHold(`${index}:10`)
               }
             >
-              <Text style={[styles.incrementIndicator, { transform: [{ rotate: rotation }] }]}>+</Text>
+              <Text style={[styles.incrementIndicator, { transform: [{ rotate: displayRotation }] }]}>+</Text>
             </Pressable>
           </>
         )}
@@ -361,7 +364,7 @@ export default function Index() {
           pointerEvents="box-none"
           style={[
             styles.cardContent,
-            { transform: [{ rotate: rotation }] },
+            { transform: [{ rotate: displayRotation }] },
             eliminated && !cmdMode && styles.eliminatedContent,
           ]}
         >
