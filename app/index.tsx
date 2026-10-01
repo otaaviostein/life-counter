@@ -296,6 +296,16 @@ export default function Index() {
           : rotation === "180deg"
             ? { top: 12, left: 12 }
             : { bottom: 12, right: 12 };
+    // The seat owner's bottom-left corner (damage summary), with extra inset
+    // on sideways seats so the rotated chip column stays inside the card.
+    const summaryCorner =
+      rotation === "90deg"
+        ? { top: 12, left: 26 }
+        : rotation === "-90deg"
+          ? { bottom: 12, right: 26 }
+          : rotation === "180deg"
+            ? { top: 14, right: 12 }
+            : { bottom: 14, left: 12 };
     return (
       <View
         key={index}
@@ -446,33 +456,6 @@ export default function Index() {
                       : pendingDeltas[index]}
                   </Text>
                 )}
-                {commanderDamage[index].some(
-                  (dmg, from) => from < players && dmg > 0
-                ) && (
-                  <View style={styles.cmdChipsRow}>
-                    {commanderDamage[index].map((dmg, from) =>
-                      from < players && from !== index && dmg > 0 ? (
-                        <Text
-                          key={from}
-                          style={[
-                            styles.cmdChip,
-                            dmg >= 21
-                              ? {
-                                  backgroundColor: "rgba(255, 107, 90, 0.2)",
-                                  color: "#FF6B5A",
-                                }
-                              : {
-                                  backgroundColor: `${PLAYER_ACCENTS[from]}33`,
-                                  color: PLAYER_ACCENTS[from],
-                                },
-                          ]}
-                        >
-                          P{from + 1} {dmg}
-                        </Text>
-                      ) : null
-                    )}
-                  </View>
-                )}
               </View>
               </View>
               {players > 1 && (
@@ -539,6 +522,43 @@ export default function Index() {
             )}
           </Pressable>
         )}
+
+        {!cmdMode &&
+          commanderDamage[index].some(
+            (dmg, from) => from < players && from !== index && dmg > 0
+          ) && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.cmdSummary,
+                summaryCorner,
+                { transform: [{ rotate: rotation }] },
+                eliminated && styles.eliminatedContent,
+              ]}
+            >
+              {commanderDamage[index].map((dmg, from) =>
+                from < players && from !== index && dmg > 0 ? (
+                  <Text
+                    key={from}
+                    style={[
+                      styles.cmdChip,
+                      dmg >= 21
+                        ? {
+                            backgroundColor: "rgba(255, 107, 90, 0.2)",
+                            color: "#FF6B5A",
+                          }
+                        : {
+                            backgroundColor: `${PLAYER_ACCENTS[from]}33`,
+                            color: PLAYER_ACCENTS[from],
+                          },
+                    ]}
+                  >
+                    P{from + 1} {dmg}
+                  </Text>
+                ) : null
+              )}
+            </View>
+          )}
       </View>
     );
   };
@@ -1197,13 +1217,11 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginTop: 2,
   },
-  cmdChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 4,
-    marginTop: 4,
-    maxWidth: 200,
+  cmdSummary: {
+    position: "absolute",
+    alignItems: "center",
+    gap: 3,
+    zIndex: 3,
   },
   cmdChip: {
     fontSize: 10,
