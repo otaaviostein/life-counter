@@ -1,5 +1,5 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
-  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,7 +19,6 @@ type PlayerCardProps = {
   style: StyleProp<ViewStyle>;
   life: number;
   pendingDelta: number;
-  poison: number;
   /** Commander damage this player has received, indexed by attacker. */
   damageTaken: number[];
   /** Damage this player has dealt to the current cmd receiver (0 outside cmd mode). */
@@ -30,7 +29,7 @@ type PlayerCardProps = {
   onLife: (delta: number) => void;
   onLifeHold: (delta: number) => void;
   onLifeHoldEnd: (delta: number) => void;
-  onPoison: (delta: number) => void;
+  onPing: () => void;
   onCmdDamage: (delta: number) => void;
   onCmdOpen: () => void;
   onCmdClose: () => void;
@@ -43,7 +42,6 @@ export const PlayerCard = ({
   style,
   life,
   pendingDelta,
-  poison,
   damageTaken,
   damageToReceiver,
   eliminated,
@@ -51,7 +49,7 @@ export const PlayerCard = ({
   onLife,
   onLifeHold,
   onLifeHoldEnd,
-  onPoison,
+  onPing,
   onCmdDamage,
   onCmdOpen,
   onCmdClose,
@@ -81,13 +79,13 @@ export const PlayerCard = ({
             ? `${PLAYER_ACCENTS[cmdFor]}E6`
             : eliminated && !cmdMode
               ? "rgba(236, 230, 217, 0.12)"
-              : `${PLAYER_ACCENTS[index]}8C`,
+              : `${PLAYER_ACCENTS[index]}B3`,
         },
       ]}
     >
       <View
         pointerEvents="none"
-        style={[styles.seatTint, { backgroundColor: `${PLAYER_ACCENTS[index]}30` }]}
+        style={[styles.seatTint, { backgroundColor: `${PLAYER_ACCENTS[index]}4D` }]}
       />
       {!isReceiver && (
         <>
@@ -205,62 +203,44 @@ export const PlayerCard = ({
             </View>
             {players > 1 && (
               <TouchableOpacity
-                style={styles.commanderButton}
+                style={[
+                  styles.commanderButton,
+                  {
+                    borderColor: PLAYER_ACCENTS[index],
+                    backgroundColor: `${PLAYER_ACCENTS[index]}66`,
+                  },
+                ]}
                 onPress={(e) => {
                   e.stopPropagation();
                   onCmdOpen();
                 }}
+                accessibilityLabel="Add commander damage received"
               >
-                <Text style={styles.commanderButtonText}>CMD</Text>
+                <MaterialCommunityIcons
+                  name="sword-cross"
+                  size={16}
+                  color="#0C0F13"
+                />
               </TouchableOpacity>
             )}
           </>
         )}
       </View>
 
-      {!cmdMode && (
+      {!cmdMode && players > 1 && (
         <Pressable
           style={({ pressed }) => [
-            styles.poisonChip,
+            styles.pingChip,
             CHIP_CORNERS[rotation],
             { transform: [{ rotate: rotation }] },
-            poison > 0 && styles.poisonChipActive,
-            poison >= 10 && styles.poisonChipLethal,
             eliminated && styles.eliminatedContent,
             pressed && styles.chipPressed,
           ]}
-          onPress={() => onPoison(1)}
-          onLongPress={() => onPoison(-1)}
-          delayLongPress={400}
-          accessibilityLabel={`Poison: ${poison}. Tap to add.`}
+          onPress={onPing}
+          accessibilityLabel="Each opponent loses 1 life"
         >
-          <Image
-            source={require("../assets/images/phyrexian.png")}
-            style={[
-              styles.poisonChipIcon,
-              poison > 0 && { tintColor: "#66BB88" },
-              poison >= 10 && { tintColor: "#FF6B5A" },
-            ]}
-          />
-          <Text
-            style={[
-              styles.poisonChipCount,
-              poison === 0 && styles.poisonChipMuted,
-              poison >= 10 && { color: "#FF6B5A" },
-            ]}
-          >
-            {poison}
-          </Text>
-          {poison > 0 && (
-            <Pressable
-              style={({ pressed }) => [styles.poisonBadge, pressed && styles.chipPressed]}
-              hitSlop={8}
-              onPress={() => onPoison(-1)}
-              accessibilityLabel="Remove one poison"
-            >
-              <Text style={styles.poisonBadgeText}>-</Text>
-            </Pressable>
-          )}
+          <Text style={styles.pingChipText}>-1</Text>
+          <Text style={styles.pingChipLabel}>ALL</Text>
         </Pressable>
       )}
 
@@ -436,61 +416,32 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontWeight: "700",
   },
-  poisonChip: {
+  pingChip: {
     position: "absolute",
     width: 50,
     height: 50,
     borderRadius: 25,
     borderWidth: 1.5,
-    borderColor: "transparent",
+    borderColor: "rgba(236, 230, 217, 0.25)",
+    backgroundColor: "rgba(236, 230, 217, 0.04)",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 3,
   },
-  poisonChipActive: {
-    borderColor: "#66BB88",
-    backgroundColor: "rgba(102, 187, 136, 0.16)",
-  },
-  poisonChipLethal: {
-    borderColor: "#FF6B5A",
-    backgroundColor: "rgba(255, 107, 90, 0.16)",
-  },
-  poisonChipIcon: {
-    width: 13,
-    height: 23,
-    tintColor: "rgba(236, 230, 217, 0.35)",
-    marginBottom: 1,
-  },
-  poisonChipCount: {
+  pingChipText: {
     color: "#ECE6D9",
     fontSize: 15,
     lineHeight: 18,
     fontFamily: "Nunito_800ExtraBold",
   },
-  poisonChipMuted: {
-    color: "rgba(236, 230, 217, 0.35)",
+  pingChipLabel: {
+    color: "rgba(236, 230, 217, 0.5)",
+    fontSize: 8,
+    letterSpacing: 1,
+    fontWeight: "700",
   },
   chipPressed: {
     opacity: 0.55,
-  },
-  poisonBadge: {
-    position: "absolute",
-    top: -7,
-    right: -7,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#2A3242",
-    borderWidth: 1,
-    borderColor: "rgba(236, 230, 217, 0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  poisonBadgeText: {
-    color: "#ECE6D9",
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 16,
   },
   eliminatedContent: {
     opacity: 0.4,
@@ -506,7 +457,7 @@ const TOUCH_AREAS: Record<Rotation, { dec: ViewStyle; inc: ViewStyle }> = {
   "180deg": { dec: styles.rightTouchArea, inc: styles.leftTouchArea },
 };
 
-// The seat owner's bottom-right corner (poison chip), in screen coordinates.
+// The seat owner's bottom-right corner (ping chip), in screen coordinates.
 const CHIP_CORNERS: Record<Rotation, ViewStyle> = {
   "0deg": { bottom: 12, right: 12 },
   "90deg": { bottom: 12, left: 12 },

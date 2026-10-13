@@ -37,7 +37,6 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
   const pendingTimers = useRef<(ReturnType<typeof setTimeout> | null)[]>(
     Array(6).fill(null)
   );
-  const [poison, setPoison] = useState<number[]>(Array(6).fill(0));
   const [menuOpen, setMenuOpen] = useState(false);
 
   const lightTap = () => {
@@ -101,18 +100,15 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
     setPendingDeltas(Array(6).fill(0));
     setCounters(Array(6).fill(startingLife));
     setCommanderDamage(Array(6).fill(null).map(() => Array(6).fill(0)));
-    setPoison(Array(6).fill(0));
     setCmdFor(null);
     setMenuOpen(false);
   };
 
-  const updatePoison = (index: number, delta: number) => {
+  const pingOpponents = (index: number) => {
     lightTap();
-    setPoison((prev) => {
-      const next = [...prev];
-      next[index] = Math.min(10, Math.max(0, next[index] + delta));
-      return next;
-    });
+    for (let opponent = 0; opponent < players; opponent++) {
+      if (opponent !== index) updateCounter(opponent, -1);
+    }
   };
 
   const updateCommanderDamage = (fromPlayer: number, toPlayer: number, delta: number) => {
@@ -129,7 +125,6 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
 
   const isEliminated = (index: number) =>
     getAdjustedLifeTotal(index) <= 0 ||
-    poison[index] >= 10 ||
     commanderDamage[index].some((dmg) => dmg >= 21);
 
   const renderPlayerCard = (index: number, layoutStyle: StyleProp<ViewStyle>) => (
@@ -141,7 +136,6 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
       style={layoutStyle}
       life={getAdjustedLifeTotal(index)}
       pendingDelta={pendingDeltas[index]}
-      poison={poison[index]}
       damageTaken={commanderDamage[index]}
       damageToReceiver={cmdFor !== null ? commanderDamage[cmdFor][index] : 0}
       eliminated={isEliminated(index)}
@@ -149,7 +143,7 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
       onLife={(delta) => updateCounter(index, delta)}
       onLifeHold={(delta) => startHold(index, delta)}
       onLifeHoldEnd={(delta) => stopHold(`${index}:${delta}`)}
-      onPoison={(delta) => updatePoison(index, delta)}
+      onPing={() => pingOpponents(index)}
       onCmdDamage={(delta) =>
         cmdFor !== null && updateCommanderDamage(index, cmdFor, delta)
       }
@@ -197,6 +191,7 @@ export const GameBoard = ({ config, onHome }: GameBoardProps) => {
       <View pointerEvents="box-none" style={styles.centerOverlay}>
         <TouchableOpacity
           style={styles.endOrb}
+          hitSlop={12}
           onPress={() => {
             lightTap();
             setMenuOpen(true);
