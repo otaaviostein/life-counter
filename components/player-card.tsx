@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Platform,
   Pressable,
@@ -11,6 +12,60 @@ import {
 } from "react-native";
 
 import { PLAYER_ACCENTS, getPlayerRotation, type Rotation } from "../lib/game";
+
+const HOLD_DELAY_MS = 400;
+
+type TouchHalfProps = {
+  area: StyleProp<ViewStyle>;
+  onTap: () => void;
+  onHold?: () => void;
+  onRelease?: () => void;
+  children: ReactNode;
+};
+
+// Raw touch events instead of Pressable: RN's responder system (and iOS
+// gesture recognizers) only allow one active press per window, which broke
+// several players adjusting life at the same time. Touch events are
+// delivered per view with no global arbitration.
+const TouchHalf = ({ area, onTap, onHold, onRelease, children }: TouchHalfProps) => {
+  const [pressed, setPressed] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holding = useRef(false);
+
+  const start = () => {
+    setPressed(true);
+    if (onHold) {
+      holding.current = false;
+      holdTimer.current = setTimeout(() => {
+        holding.current = true;
+        onHold();
+      }, HOLD_DELAY_MS);
+    }
+  };
+
+  const end = (cancelled: boolean) => {
+    setPressed(false);
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+    if (holding.current) {
+      holding.current = false;
+      onRelease?.();
+    } else if (!cancelled) {
+      onTap();
+    }
+  };
+
+  return (
+    <View
+      style={[area, pressed && styles.halfPressed]}
+      onTouchStart={start}
+      onTouchEnd={() => end(false)}
+      onTouchCancel={() => end(true)}
+    >
+      {children}
+    </View>
+  );
+};
 
 type PlayerCardProps = {
   index: number;
@@ -89,33 +144,31 @@ export const PlayerCard = ({
       />
       {!isReceiver && (
         <>
-          <Pressable
-            style={({ pressed }) => [touch.dec, pressed && styles.halfPressed]}
-            onPress={isAttacker ? () => onCmdDamage(-1) : () => onLife(-1)}
-            onLongPress={isAttacker ? undefined : () => onLifeHold(-10)}
-            delayLongPress={400}
-            onPressOut={isAttacker ? undefined : () => onLifeHoldEnd(-10)}
+          <TouchHalf
+            area={touch.dec}
+            onTap={isAttacker ? () => onCmdDamage(-1) : () => onLife(-1)}
+            onHold={isAttacker ? undefined : () => onLifeHold(-10)}
+            onRelease={isAttacker ? undefined : () => onLifeHoldEnd(-10)}
           >
             <Text
               style={[styles.halfIndicator, { transform: [{ rotate: displayRotation }] }]}
             >
               -
             </Text>
-          </Pressable>
+          </TouchHalf>
 
-          <Pressable
-            style={({ pressed }) => [touch.inc, pressed && styles.halfPressed]}
-            onPress={isAttacker ? () => onCmdDamage(1) : () => onLife(1)}
-            onLongPress={isAttacker ? undefined : () => onLifeHold(10)}
-            delayLongPress={400}
-            onPressOut={isAttacker ? undefined : () => onLifeHoldEnd(10)}
+          <TouchHalf
+            area={touch.inc}
+            onTap={isAttacker ? () => onCmdDamage(1) : () => onLife(1)}
+            onHold={isAttacker ? undefined : () => onLifeHold(10)}
+            onRelease={isAttacker ? undefined : () => onLifeHoldEnd(10)}
           >
             <Text
               style={[styles.halfIndicator, { transform: [{ rotate: displayRotation }] }]}
             >
               +
             </Text>
-          </Pressable>
+          </TouchHalf>
         </>
       )}
 
@@ -210,10 +263,7 @@ export const PlayerCard = ({
                     backgroundColor: `${PLAYER_ACCENTS[index]}66`,
                   },
                 ]}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onCmdOpen();
-                }}
+                onPress={onCmdOpen}
                 accessibilityLabel="Add commander damage received"
               >
                 <MaterialCommunityIcons
