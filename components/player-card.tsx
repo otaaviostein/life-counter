@@ -238,6 +238,9 @@ export const PlayerCard = ({
                   <Text
                     style={[
                       styles.deltaChip,
+                      // Opposite side of the finger: minus is tapped on the
+                      // player's left, plus on their right.
+                      pendingDelta > 0 ? { left: -18 } : { right: -18 },
                       pendingDelta > 0
                         ? {
                             backgroundColor: "rgba(102, 187, 136, 0.18)",
@@ -424,12 +427,11 @@ const styles = StyleSheet.create({
   },
   deltaChip: {
     position: "absolute",
-    right: -14,
     top: 2,
-    height: 22,
-    fontSize: 12,
-    fontWeight: "500",
-    paddingHorizontal: 9,
+    height: 26,
+    fontSize: 15,
+    fontWeight: "600",
+    paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 10,
     overflow: "hidden",
